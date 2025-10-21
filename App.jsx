@@ -18,7 +18,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import NotAuthorized from './pages/NotAuthorized';
 import NotFound from './pages/NotFound';
 import Goals from './pages/Goals';
-import TestPage from './src/pages/TestPage';
 import authService from './api/authService';
 import membersService from './api/membersService';
 import paymentsService from './api/paymentsService';
@@ -259,14 +258,6 @@ const App = () => {
                           setGoals={setGoals} 
                           currentUser={currentUser}
                         />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/test" 
-                    element={
-                      <ProtectedRoute currentUser={currentUser} screenName="test">
-                        <TestPage />
                       </ProtectedRoute>
                     } 
                   />

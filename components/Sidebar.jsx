@@ -146,15 +146,6 @@ const Sidebar = ({ currentUser, onLogout }) => {
               {!isCollapsed && 'Settings'}
             </Link>
           </li>
-          <li>
-            <Link 
-              to="/test" 
-              className={isActive('/test') ? 'active' : ''}
-            >
-              <FaVial className="nav-icon" />
-              {!isCollapsed && 'Supabase Test'}
-            </Link>
-          </li>
           {/* Removed Google Sheets Test link */}
         </ul>
       </nav>

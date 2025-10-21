@@ -18,17 +18,17 @@ const ProtectedRoute = ({
     return children;
   }
 
-  // Check if user has permissions for this screen
-  const userPermissions = currentUser.permissions || {};
-  const screenPermissions = userPermissions[screenName] || {};
+  // For member users, check if they have permissions for this screen
+  // In a more complex app, you might check specific permissions here
+  // For now, we'll allow members to access most screens except admin-only ones
+  const adminOnlyScreens = []; // Add screen names that should be admin-only
   
-  // Check if user has the required permission level
-  if (screenPermissions[requiredPermission]) {
-    return children;
+  if (adminOnlyScreens.includes(screenName) && currentUser.role !== 'admin') {
+    return <NotAuthorized />;
   }
 
-  // If user doesn't have permission, show not authorized screen
-  return <NotAuthorized />;
+  // Members can access all other screens
+  return children;
 };
 
 export default ProtectedRoute;

@@ -1,7 +1,6 @@
-/* UserManagement.css */
 .user-management {
   padding: 20px;
-  max-width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -13,24 +12,33 @@
 }
 
 .users-list {
-  background-color: #ffffff;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   margin-bottom: 30px;
+  width: 100%;
+}
+
+body.theme-light .users-list {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
 }
 
 body.theme-dark .users-list {
-  background-color: #1e1e1e;
+  background: #1e1e1e;
   border: 1px solid #343a40;
 }
 
 .users-header {
-  padding: 20px 25px;
-  border-bottom: 1px solid #e9ecef;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid;
+}
+
+body.theme-light .users-header {
+  border-bottom-color: #e9ecef;
 }
 
 body.theme-dark .users-header {
@@ -40,18 +48,14 @@ body.theme-dark .users-header {
 .users-header h2 {
   margin: 0;
   color: inherit;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 600;
-}
-
-.users-table-container {
-  overflow-x: auto;
 }
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 600px;
+  min-width: 800px;
 }
 
 .data-table thead {
@@ -106,96 +110,22 @@ body.theme-dark .data-table tbody tr:hover {
 }
 
 .role-badge {
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
   font-size: 0.8rem;
   font-weight: 500;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .role-badge.admin {
-  background-color: #d4edda;
-  color: #155724;
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
 }
 
 .role-badge.member {
-  background-color: #e2e3e5;
-  color: #383d41;
-}
-
-body.theme-dark .role-badge.admin {
-  background-color: #4caf50;
-  color: #ffffff;
-}
-
-body.theme-dark .role-badge.member {
-  background-color: #6c757d;
-  color: #ffffff;
-}
-
-/* Permissions Modal */
-.permissions-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 15px;
-  margin: 25px 0;
-}
-
-.permissions-header {
-  display: contents;
-  font-weight: 600;
-}
-
-.permissions-row {
-  display: contents;
-}
-
-.screen-name {
-  display: flex;
-  align-items: center;
-  font-weight: 500;
-}
-
-.permission-type,
-.permission-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.permission-toggle input[type="checkbox"] {
-  display: none;
-}
-
-.toggle-label {
-  width: 40px;
-  height: 20px;
-  background-color: #ccc;
-  border-radius: 10px;
-  position: relative;
-  cursor: pointer;
-  display: inline-block;
-  transition: background-color 0.3s;
-}
-
-.toggle-label::after {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background-color: white;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.3s;
-}
-
-.permission-toggle input[type="checkbox"]:checked + .toggle-label {
-  background-color: #007bff;
-}
-
-.permission-toggle input[type="checkbox"]:checked + .toggle-label::after {
-  transform: translateX(20px);
+  background-color: rgba(108, 117, 125, 0.1);
+  color: #6c757d;
 }
 
 /* Overlay styles */
@@ -217,11 +147,10 @@ body.theme-dark .role-badge.member {
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   width: 100%;
-  max-width: 600px;
+  max-width: 700px;
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
-  padding: 25px;
 }
 
 body.theme-light .overlay-content {
@@ -236,13 +165,7 @@ body.theme-dark .overlay-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 25px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #e9ecef;
-}
-
-body.theme-dark .overlay-header {
-  border-bottom-color: #343a40;
+  padding: 25px 25px 0;
 }
 
 .overlay-header h2 {
@@ -265,7 +188,6 @@ body.theme-dark .overlay-header {
   height: 36px;
   transition: background-color 0.2s ease;
   font-size: 1.5rem;
-  font-weight: normal;
 }
 
 body.theme-light .close-btn {
@@ -288,20 +210,153 @@ body.theme-dark .close-btn:hover {
   background-color: #343a40;
 }
 
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: inherit;
+}
+
+.role-select {
+  width: 100%;
+  padding: 12px 15px;
+  border-radius: 8px;
+  font-size: 1rem;
+  border: 1px solid;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  box-sizing: border-box;
+  background-color: inherit;
+  color: inherit;
+}
+
+body.theme-light .role-select {
+  background-color: #ffffff;
+  color: #212529;
+  border-color: #ced4da;
+}
+
+body.theme-dark .role-select {
+  background-color: #2d2d2d;
+  color: #e9ecef;
+  border-color: #495057;
+}
+
+.role-select:focus {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+body.theme-light .role-select:focus {
+  border-color: #007bff;
+}
+
+body.theme-dark .role-select:focus {
+  border-color: #1976d2;
+}
+
+.permissions-grid {
+  margin: 25px 0;
+  border: 1px solid;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+body.theme-light .permissions-grid {
+  border-color: #dee2e6;
+}
+
+body.theme-dark .permissions-grid {
+  border-color: #343a40;
+}
+
+.permissions-header {
+  display: flex;
+  background-color: rgba(0, 0, 0, 0.03);
+  font-weight: 600;
+  border-bottom: 1px solid;
+}
+
+body.theme-light .permissions-header {
+  background-color: #f8f9fa;
+  border-bottom-color: #dee2e6;
+}
+
+body.theme-dark .permissions-header {
+  background-color: #2d2d2d;
+  border-bottom-color: #343a40;
+}
+
+.permissions-row {
+  display: flex;
+  border-bottom: 1px solid;
+}
+
+body.theme-light .permissions-row {
+  border-bottom-color: #dee2e6;
+}
+
+body.theme-dark .permissions-row {
+  border-bottom-color: #343a40;
+}
+
+.permissions-row:last-child {
+  border-bottom: none;
+}
+
+.screen-name {
+  flex: 1;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+}
+
+.permission-type {
+  flex: 1;
+  padding: 15px 20px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.permission-toggle {
+  flex: 1;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 15px;
   margin-top: 30px;
   padding-top: 20px;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid;
+}
+
+body.theme-light .form-actions {
+  border-top-color: #e9ecef;
 }
 
 body.theme-dark .form-actions {
   border-top-color: #343a40;
 }
 
-/* Buttons */
 .btn {
   padding: 12px 24px;
   border-radius: 8px;
@@ -347,6 +402,7 @@ body.theme-dark .btn--primary:hover {
 
 .btn--secondary {
   color: white;
+  background-color: #6c757d;
 }
 
 body.theme-light .btn--secondary {
@@ -366,6 +422,48 @@ body.theme-dark .btn--secondary:hover {
 }
 
 /* Responsive adjustments */
+@media (max-width: 1024px) {
+  .user-management {
+    padding: 18px;
+  }
+  
+  .user-management h1 {
+    font-size: 1.6rem;
+  }
+  
+  .users-header {
+    padding: 18px;
+  }
+  
+  .users-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 14px 18px;
+  }
+  
+  .overlay-content {
+    max-width: 650px;
+  }
+  
+  .overlay-header {
+    padding: 22px 22px 0;
+  }
+  
+  .permissions-header,
+  .permissions-row {
+    padding: 12px 15px;
+  }
+  
+  .form-actions {
+    gap: 12px;
+    margin-top: 25px;
+    padding-top: 18px;
+  }
+}
+
 @media (max-width: 768px) {
   .user-management {
     padding: 15px;
@@ -377,25 +475,24 @@ body.theme-dark .btn--secondary:hover {
   }
   
   .users-header {
-    padding: 15px 20px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+    padding: 15px;
   }
   
   .users-header h2 {
     font-size: 1.3rem;
   }
   
+  .data-table {
+    display: block;
+    overflow-x: auto;
+  }
+  
   .data-table th,
   .data-table td {
     padding: 12px 15px;
-    font-size: 0.9rem;
-  }
-  
-  .permissions-grid {
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
-  }
-  
-  .screen-name {
     font-size: 0.9rem;
   }
   
@@ -405,27 +502,37 @@ body.theme-dark .btn--secondary:hover {
   
   .overlay-content {
     max-width: 95%;
-    padding: 20px;
   }
   
   .overlay-header {
-    margin-bottom: 20px;
-    padding-bottom: 12px;
+    padding: 20px 20px 0;
   }
   
   .overlay-header h2 {
     font-size: 1.3rem;
   }
   
+  .permissions-grid {
+    font-size: 0.9rem;
+  }
+  
+  .screen-name,
+  .permission-type,
+  .permission-toggle {
+    padding: 12px 15px;
+  }
+  
   .form-actions {
     gap: 10px;
     margin-top: 20px;
     padding-top: 15px;
+    flex-direction: column;
   }
   
   .btn {
     padding: 10px 20px;
     font-size: 0.9rem;
+    width: 100%;
   }
 }
 
@@ -436,76 +543,42 @@ body.theme-dark .btn--secondary:hover {
   
   .user-management h1 {
     font-size: 1.3rem;
-    margin-bottom: 15px;
   }
   
-  .users-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-    padding: 12px 15px;
-  }
-  
-  .data-table {
-    display: block;
-    overflow-x: auto;
+  .users-header h2 {
+    font-size: 1.2rem;
   }
   
   .data-table th,
   .data-table td {
     padding: 10px 12px;
     font-size: 0.8rem;
-    white-space: nowrap;
   }
   
-  .permissions-grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-  
-  .permissions-header,
-  .permissions-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
-    padding: 10px 0;
-    border-bottom: 1px solid #e9ecef;
-  }
-  
-  body.theme-dark .permissions-header,
-  body.theme-dark .permissions-row {
-    border-bottom-color: #343a40;
-  }
-  
-  .screen-name {
-    grid-column: 1 / -1;
-    font-weight: 600;
-    padding-bottom: 5px;
-  }
-  
-  .permission-type,
-  .permission-toggle {
-    justify-content: flex-start;
+  .role-badge {
+    padding: 3px 8px;
+    font-size: 0.7rem;
   }
   
   .overlay-content {
-    padding: 15px;
+    padding: 0;
   }
   
   .overlay-header {
-    margin-bottom: 15px;
-    padding-bottom: 10px;
+    padding: 18px 18px 0;
   }
   
   .overlay-header h2 {
     font-size: 1.2rem;
   }
   
-  .form-actions {
-    flex-direction: column;
+  .permissions-grid {
+    font-size: 0.8rem;
   }
   
-  .btn {
-    width: 100%;
+  .screen-name,
+  .permission-type,
+  .permission-toggle {
+    padding: 10px 12px;
   }
 }

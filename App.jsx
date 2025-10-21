@@ -18,7 +18,13 @@ import ProtectedRoute from './components/ProtectedRoute';
 import NotAuthorized from './pages/NotAuthorized';
 import NotFound from './pages/NotFound';
 import Goals from './pages/Goals';
+import TestPage from './src/pages/TestPage';
+import authService from './api/authService';
 import membersService from './api/membersService';
+import paymentsService from './api/paymentsService';
+import transactionRequestsService from './api/transactionRequestsService';
+import auditService from './api/auditService';
+import { supabase } from './src/config/supabaseClient';
 
 import './App.css';
 
@@ -41,36 +47,51 @@ const App = () => {
   // Check for existing session on app load
   useEffect(() => {
     const checkSession = async () => {
-      const storedUser = localStorage.getItem('currentUser');
-      const loginTime = localStorage.getItem('loginTime');
-      
-      if (storedUser && loginTime) {
-        const now = Date.now();
-        const elapsed = now - parseInt(loginTime);
-        const fifteenMinutes = 15 * 60 * 1000;
+      try {
+        // Check if there's an existing Supabase session
+        const session = authService.getSession();
+        const currentUser = await authService.getCurrentUser();
         
-        // If less than 15 minutes, restore session
-        if (elapsed < fifteenMinutes) {
-          const user = JSON.parse(storedUser);
+        if (session && currentUser) {
           setIsLoggedIn(true);
+          
+          // Get user role from auth.users table
+          let role = 'member'; // default role
+          
+          // Check if user is in the list of admins
+          if (currentUser.email === 'mhassantoha@gmail.com' || currentUser.email === 'admin@munshiinvestment.com') {
+            role = 'admin';
+          }
+          
+          // Create user object
+          const user = {
+            id: currentUser.id,
+            name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+            email: currentUser.email,
+            role: role
+          };
+          
           setCurrentUser(user);
           
-          // Fetch members
+          // Fetch members, payments, and requests
           try {
-            const fetchedMembers = await membersService.getAllMembers();
+            const [fetchedMembers, fetchedPayments, fetchedRequests] = await Promise.all([
+              membersService.getAllMembers(),
+              paymentsService.getAllPayments(),
+              transactionRequestsService.getAllRequests()
+            ]);
             setMembers(fetchedMembers || []);
+            setPayments(fetchedPayments || []);
+            setRequests(fetchedRequests || []);
           } catch (error) {
-            console.error('Failed to fetch members:', error);
+            console.error('Failed to fetch data:', error);
           }
-        } else {
-          // Session expired, clear storage
-          localStorage.removeItem('currentUser');
-          localStorage.removeItem('loginTime');
-          localStorage.removeItem('authToken');
         }
+      } catch (error) {
+        console.error('Failed to check session:', error);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
     
     checkSession();
@@ -80,28 +101,42 @@ const App = () => {
     setIsLoggedIn(true);
     setCurrentUser(user);
     
-    // Store user and login time in localStorage
-    localStorage.setItem('currentUser', JSON.stringify(user));
-    localStorage.setItem('loginTime', Date.now().toString());
-    
-    // Fetch members from Google Sheets after login
+    // Fetch members, payments, and requests from Supabase after login
     try {
-      const fetchedMembers = await membersService.getAllMembers();
+      const [fetchedMembers, fetchedPayments, fetchedRequests] = await Promise.all([
+        membersService.getAllMembers(),
+        paymentsService.getAllPayments(),
+        transactionRequestsService.getAllRequests()
+      ]);
       setMembers(fetchedMembers || []);
+      setPayments(fetchedPayments || []);
+      setRequests(fetchedRequests || []);
     } catch (error) {
-      console.error('Failed to fetch members:', error);
+      console.error('Failed to fetch data:', error);
       setMembers([]);
+      setPayments([]);
+      setRequests([]);
     }
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setCurrentUser(null);
-    
-    // Clear localStorage on logout
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('loginTime');
-    localStorage.removeItem('authToken');
+  const handleLogout = async () => {
+    try {
+      // Log the logout action before signing out
+      if (currentUser && currentUser.id) {
+        await auditService.logUserLogout(currentUser.id);
+      }
+      
+      await authService.logout();
+      authService.removeSession();
+      setIsLoggedIn(false);
+      setCurrentUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if logout fails on the server, clear the local session
+      authService.removeSession();
+      setIsLoggedIn(false);
+      setCurrentUser(null);
+    }
   };
 
   if (loading) {
@@ -227,7 +262,16 @@ const App = () => {
                       </ProtectedRoute>
                     } 
                   />
-                  {/* Removed Google Sheets test route */}
+                  <Route 
+                    path="/test" 
+                    element={
+                      <ProtectedRoute currentUser={currentUser} screenName="test">
+                        <TestPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  {/* Removed Google Sheets Test route */
+                  }
                   <Route path="/not-authorized" element={<NotAuthorized />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
@@ -237,7 +281,7 @@ const App = () => {
           </>
         ) : (
           <Routes>
-            <Route path="/login" element={<Login onLogin={handleLogin} />} />
+            <Route path="/login" element={<Login onLogin={handleLogin} />}/>
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         )}

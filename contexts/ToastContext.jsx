@@ -3,6 +3,12 @@ import Toast from '../components/Toast';
 
 const ToastContext = createContext();
 
+// Simple unique ID generator
+let toastIdCounter = 0;
+const generateUniqueId = () => {
+  return `${Date.now()}-${++toastIdCounter}`;
+};
+
 export const useToast = () => {
   const context = useContext(ToastContext);
   if (!context) {
@@ -15,7 +21,7 @@ export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
   const addToast = (message, type = 'info') => {
-    const id = Date.now();
+    const id = generateUniqueId();
     const newToast = { id, message, type };
     
     setToasts(prevToasts => [...prevToasts, newToast]);

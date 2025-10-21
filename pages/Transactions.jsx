@@ -7,7 +7,7 @@ const Transactions = ({ payments }) => {
   const [transactions, setTransactions] = useState([]);
   const [filteredTransactions, setFilteredTransactions] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState('paymentDate');
+  const [sortField, setSortField] = useState('payment_date');
   const [sortDirection, setSortDirection] = useState('desc');
   
   const { startLoading, stopLoading, isLoading } = useLoading();
@@ -30,9 +30,10 @@ const Transactions = ({ payments }) => {
       setFilteredTransactions(transactions);
     } else {
       const filtered = transactions.filter(transaction =>
-        transaction.memberName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.paymentMethod.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.paymentMonth.toLowerCase().includes(searchTerm.toLowerCase())
+        (transaction.memberName && transaction.memberName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (transaction.payment_method && transaction.payment_method.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (transaction.description && transaction.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (transaction.cashier_name && transaction.cashier_name.toLowerCase().includes(searchTerm.toLowerCase()))
       );
       setFilteredTransactions(filtered);
     }
@@ -40,10 +41,29 @@ const Transactions = ({ payments }) => {
 
   // Sort transactions
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
-    if (a[sortField] < b[sortField]) {
+    // Handle different field names for sorting
+    let aValue = a[sortField];
+    let bValue = b[sortField];
+    
+    // Fallback for fields that might have different names
+    if (sortField === 'paymentMonth' && !aValue) {
+      aValue = a.description;
+      bValue = b.description;
+    } else if (sortField === 'paymentDate' && !aValue) {
+      aValue = a.payment_date;
+      bValue = b.payment_date;
+    } else if (sortField === 'paymentMethod' && !aValue) {
+      aValue = a.payment_method;
+      bValue = b.payment_method;
+    } else if (sortField === 'cashierName' && !aValue) {
+      aValue = a.cashier_name;
+      bValue = b.cashier_name;
+    }
+    
+    if (aValue < bValue) {
       return sortDirection === 'asc' ? -1 : 1;
     }
-    if (a[sortField] > b[sortField]) {
+    if (aValue > bValue) {
       return sortDirection === 'asc' ? 1 : -1;
     }
     return 0;
@@ -127,15 +147,15 @@ const Transactions = ({ payments }) => {
                   sortedTransactions.map((transaction) => (
                     <tr key={transaction.id}>
                       <td>{transaction.id}</td>
-                      <td>{transaction.memberName}</td>
-                      <td>{transaction.amount.toFixed(2)}</td>
-                      <td>{transaction.paymentMonth}</td>
-                      <td>{transaction.paymentDate}</td>
-                      <td>{transaction.paymentMethod}</td>
-                      <td>{transaction.cashierName}</td>
+                      <td>{transaction.memberName || 'Unknown'}</td>
+                      <td>{transaction.amount ? transaction.amount.toFixed(2) : '0.00'}</td>
+                      <td>{transaction.description || transaction.paymentMonth || 'N/A'}</td>
+                      <td>{transaction.payment_date || transaction.paymentDate || 'N/A'}</td>
+                      <td>{transaction.payment_method || transaction.paymentMethod || 'N/A'}</td>
+                      <td>{transaction.cashier_name || transaction.cashierName || 'N/A'}</td>
                       <td>
-                        <span className={`status-badge status-badge--${transaction.status}`}>
-                          {transaction.status}
+                        <span className={`status-badge status-badge--${transaction.status || 'completed'}`}>
+                          {transaction.status || 'completed'}
                         </span>
                       </td>
                     </tr>

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUsers, FaSignInAlt, FaUserCircle, FaLock, FaEnvelope } from 'react-icons/fa';
 import authService from '../api/authService';
+import auditService from '../api/auditService';
+import { supabase } from '../src/config/supabaseClient';
 import './Login.css';
 
 const Login = ({ onLogin }) => {
@@ -26,17 +28,27 @@ const Login = ({ onLogin }) => {
       // Attempt to login using the authService
       const response = await authService.login(email, password);
       
+      // Store the session
+      authService.storeSession(response.session);
+      
+      // Get user role from auth.users table
+      let role = 'member'; // default role
+      
+      // Check if user is in the list of admins
+      if (email === 'mhassantoha@gmail.com' || email === 'admin@munshiinvestment.com') {
+        role = 'admin';
+      }
+      
       // Create user object from response
       const user = {
         id: response.user?.id || 1,
-        name: response.user?.name || 'User',
+        name: response.user?.user_metadata?.name || response.user?.email?.split('@')[0] || 'User',
         email: response.user?.email || email,
-        role: response.user?.role || 'member',
-        token: response.token
+        role: role
       };
       
-      // Store the token
-      authService.storeToken(response.token);
+      // Log the login action
+      await auditService.logUserLogin(user.id);
       
       // Call the onLogin callback with the user object
       onLogin(user);
@@ -101,15 +113,15 @@ const Login = ({ onLogin }) => {
           
           <button type="submit" className="login-button" disabled={loading}>
             {loading ? (
-              <>
-                <span className="spinner"></span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="spinner" style={{ marginRight: '8px' }}></span>
                 Signing In...
-              </>
+              </div>
             ) : (
-              <>
-                <FaSignInAlt className="button-icon" />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FaSignInAlt className="button-icon" style={{ marginRight: '8px' }} />
                 Sign In
-              </>
+              </div>
             )}
           </button>
         </form>

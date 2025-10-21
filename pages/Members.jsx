@@ -4,6 +4,8 @@ import useLoading from '../hooks/useLoading';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { hasWritePermission } from '../components/PermissionChecker';
 import membersService from '../api/membersService';
+import authService from '../api/authService';
+import userService from '../api/userService';
 import './Members.css';
 
 const Members = ({ members, setMembers, currentUser }) => {
@@ -13,44 +15,131 @@ const Members = ({ members, setMembers, currentUser }) => {
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
   const [shareAmount, setShareAmount] = useState('');
+  const [createAccessUser, setCreateAccessUser] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [userPassword, setUserPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   const { addToast } = useToast();
   const { startLoading, stopLoading, isLoading } = useLoading();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (name && contact && shareAmount) {
-      startLoading('addMember');
-      
-      try {
-        const newMember = {
-          name,
-          contact,
-          shareAmount: parseInt(shareAmount),
-          joinDate: new Date().toISOString().split('T')[0],
-          isActive: true
-        };
-        
-        const createdMember = await membersService.createMember(newMember);
-        setMembers([...members, createdMember]);
-        setName('');
-        setContact('');
-        setShareAmount('');
-        setShowForm(false);
-        
-        addToast(`Member ${name} added successfully!`, 'success');
-      } catch (error) {
-        addToast(error.message || 'Failed to add member', 'error');
-      } finally {
-        stopLoading('addMember');
-      }
-    } else {
+    
+    // Validate required fields
+    if (!name || !contact || !shareAmount) {
       addToast('Please fill in all required fields', 'error');
+      return;
+    }
+    
+    // If creating access user, validate email and password
+    if (createAccessUser) {
+      if (!userEmail || !userPassword) {
+        addToast('Please provide email and password for access user', 'error');
+        return;
+      }
+      
+      // Check if passwords match
+      if (userPassword !== confirmPassword) {
+        addToast('Passwords do not match', 'error');
+        return;
+      }
+      
+      // Check password length
+      if (userPassword.length < 6) {
+        addToast('Password must be at least 6 characters long', 'error');
+        return;
+      }
+    }
+    
+    startLoading('addMember');
+    
+    try {
+      // First create the member
+      const newMember = {
+        name,
+        contact,
+        shareAmount: parseInt(shareAmount),
+        joinDate: new Date().toISOString().split('T')[0],
+        isActive: true
+      };
+      
+      const createdMember = await membersService.createMember(newMember);
+      
+      // If requested, create access user
+      if (createAccessUser) {
+        try {
+          // Create auth user
+          const signupResponse = await authService.signup(userEmail, userPassword, {
+            name: name
+          });
+          
+          // Create user profile with member role by default
+          if (signupResponse.user) {
+            await userService.createUserProfile({
+              id: signupResponse.user.id,
+              email: userEmail,
+              name: name,
+              role: 'member' // Default to member role, not admin
+            });
+            
+            // Update member with user_id
+            await membersService.updateMember(createdMember.id, {
+              ...newMember,
+              userId: signupResponse.user.id
+            });
+            
+            addToast(`Member ${name} and access user created successfully!`, 'success');
+          }
+        } catch (userError) {
+          // If user creation fails, we should still add the member but show a warning
+          console.error('Failed to create access user:', userError);
+          addToast(`Member added but failed to create access user: ${userError.message}`, 'warning');
+        }
+      } else {
+        addToast(`Member ${name} added successfully!`, 'success');
+      }
+      
+      // Update state
+      setMembers([...members, createdMember]);
+      setName('');
+      setContact('');
+      setShareAmount('');
+      setCreateAccessUser(false);
+      setUserEmail('');
+      setUserPassword('');
+      setConfirmPassword('');
+      setShowForm(false);
+    } catch (error) {
+      addToast(error.message || 'Failed to add member', 'error');
+    } finally {
+      stopLoading('addMember');
     }
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    
+    // If creating access user, validate email and password
+    if (createAccessUser) {
+      if (!userEmail || !userPassword) {
+        addToast('Please provide email and password for access user', 'error');
+        return;
+      }
+      
+      // Check if passwords match
+      if (userPassword !== confirmPassword) {
+        addToast('Passwords do not match', 'error');
+        return;
+      }
+      
+      // Check password length
+      if (userPassword.length < 6) {
+        addToast('Password must be at least 6 characters long', 'error');
+        return;
+      }
+    }
+    
     if (name && contact && shareAmount) {
       startLoading('editMember');
       
@@ -60,6 +149,33 @@ const Members = ({ members, setMembers, currentUser }) => {
           contact,
           shareAmount: parseInt(shareAmount)
         };
+        
+        // If requested, create access user
+        if (createAccessUser) {
+          try {
+            // Create auth user
+            const signupResponse = await authService.signup(userEmail, userPassword, {
+              name: name
+            });
+            
+            // Create user profile with member role by default
+            if (signupResponse.user) {
+              await userService.createUserProfile({
+                id: signupResponse.user.id,
+                email: userEmail,
+                name: name,
+                role: 'member' // Default to member role, not admin
+              });
+              
+              // Update member with user_id
+              updatedData.userId = signupResponse.user.id;
+            }
+          } catch (userError) {
+            // If user creation fails, we should still update the member but show a warning
+            console.error('Failed to create access user:', userError);
+            addToast(`Member updated but failed to create access user: ${userError.message}`, 'warning');
+          }
+        }
         
         await membersService.updateMember(editingMember.id, updatedData);
         
@@ -72,6 +188,10 @@ const Members = ({ members, setMembers, currentUser }) => {
         setName('');
         setContact('');
         setShareAmount('');
+        setCreateAccessUser(false);
+        setUserEmail('');
+        setUserPassword('');
+        setConfirmPassword('');
         setShowEditForm(false);
         setEditingMember(null);
         
@@ -91,6 +211,10 @@ const Members = ({ members, setMembers, currentUser }) => {
     setName(member.name);
     setContact(member.contact);
     setShareAmount(member.shareAmount.toString());
+    setCreateAccessUser(false);
+    setUserEmail('');
+    setUserPassword('');
+    setConfirmPassword('');
     setShowEditForm(true);
   };
 
@@ -124,6 +248,10 @@ const Members = ({ members, setMembers, currentUser }) => {
               setName('');
               setContact('');
               setShareAmount('');
+              setCreateAccessUser(false);
+              setUserEmail('');
+              setUserPassword('');
+              setConfirmPassword('');
               setShowForm(true);
             }}
           >
@@ -278,6 +406,7 @@ const Members = ({ members, setMembers, currentUser }) => {
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Enter member's full name"
                     required
+                    autoComplete="off"
                   />
                 </div>
                 <div className="form-group">
@@ -289,6 +418,7 @@ const Members = ({ members, setMembers, currentUser }) => {
                     onChange={(e) => setContact(e.target.value)}
                     placeholder="Email or phone number"
                     required
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -302,11 +432,70 @@ const Members = ({ members, setMembers, currentUser }) => {
                   placeholder="Number of shares"
                   min="1"
                   required
+                  autoComplete="off"
                 />
                 <div className="form-hint">
                   Each share is worth 1000 BDT
                 </div>
               </div>
+              
+              {/* Option to create access user */}
+              <div className="form-group checkbox-container">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={createAccessUser}
+                    onChange={(e) => setCreateAccessUser(e.target.checked)}
+                  />
+                  Create access user for this member
+                </label>
+              </div>
+              
+              {/* User credentials fields - shown when createAccessUser is checked */}
+              {createAccessUser && (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="userEmail">User Email *</label>
+                    <input
+                      type="email"
+                      id="userEmail"
+                      value={userEmail}
+                      onChange={(e) => setUserEmail(e.target.value)}
+                      placeholder="Enter email for member login"
+                      required={createAccessUser}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="userPassword">Password *</label>
+                    <input
+                      type="password"
+                      id="userPassword"
+                      value={userPassword}
+                      onChange={(e) => setUserPassword(e.target.value)}
+                      placeholder="Enter password for member login"
+                      required={createAccessUser}
+                      autoComplete="new-password"
+                    />
+                    <div className="form-hint">
+                      Password must be at least 6 characters
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="confirmPassword">Confirm Password *</label>
+                    <input
+                      type="password"
+                      id="confirmPassword"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter password for member login"
+                      required={createAccessUser}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </>
+              )}
+              
               <div className="form-actions">
                 {isLoading('addMember') ? (
                   <LoadingSpinner size="small" />
@@ -360,6 +549,7 @@ const Members = ({ members, setMembers, currentUser }) => {
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Enter member's full name"
                     required
+                    autoComplete="off"
                   />
                 </div>
                 <div className="form-group">
@@ -371,6 +561,7 @@ const Members = ({ members, setMembers, currentUser }) => {
                     onChange={(e) => setContact(e.target.value)}
                     placeholder="Email or phone number"
                     required
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -384,11 +575,70 @@ const Members = ({ members, setMembers, currentUser }) => {
                   placeholder="Number of shares"
                   min="1"
                   required
+                  autoComplete="off"
                 />
                 <div className="form-hint">
                   Each share is worth 1000 BDT
                 </div>
               </div>
+              
+              {/* Option to create access user */}
+              <div className="form-group checkbox-container">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={createAccessUser}
+                    onChange={(e) => setCreateAccessUser(e.target.checked)}
+                  />
+                  Create access user for this member
+                </label>
+              </div>
+              
+              {/* User credentials fields - shown when createAccessUser is checked */}
+              {createAccessUser && (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="editUserEmail">User Email *</label>
+                    <input
+                      type="email"
+                      id="editUserEmail"
+                      value={userEmail}
+                      onChange={(e) => setUserEmail(e.target.value)}
+                      placeholder="Enter email for member login"
+                      required={createAccessUser}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="editUserPassword">Password *</label>
+                    <input
+                      type="password"
+                      id="editUserPassword"
+                      value={userPassword}
+                      onChange={(e) => setUserPassword(e.target.value)}
+                      placeholder="Enter password for member login"
+                      required={createAccessUser}
+                      autoComplete="new-password"
+                    />
+                    <div className="form-hint">
+                      Password must be at least 6 characters
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="editConfirmPassword">Confirm Password *</label>
+                    <input
+                      type="password"
+                      id="editConfirmPassword"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter password for member login"
+                      required={createAccessUser}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </>
+              )}
+              
               <div className="form-actions">
                 {isLoading('editMember') ? (
                   <LoadingSpinner size="small" />

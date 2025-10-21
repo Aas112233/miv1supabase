@@ -3,6 +3,7 @@ import { useToast } from '../contexts/ToastContext';
 import useLoading from '../hooks/useLoading';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { hasWritePermission } from '../components/PermissionChecker';
+import transactionRequestsService from '../api/transactionRequestsService';
 import './TransactionRequests.css';
 
 const TransactionRequests = ({ requests, setRequests, payments, setPayments, members, currentUser }) => {
@@ -58,34 +59,42 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
       setFilteredRequests(requests);
     } else {
       const filtered = requests.filter(request =>
-        request.memberName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.requestType.toLowerCase().includes(searchTerm.toLowerCase())
+        (request.memberName && request.memberName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (request.description && request.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (request.payment_method && request.payment_method.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (request.cashier_name && request.cashier_name.toLowerCase().includes(searchTerm.toLowerCase()))
       );
       setFilteredRequests(filtered);
     }
   }, [searchTerm, requests]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (memberId && amount && paymentMonth && paymentMethod && cashierName) {
       startLoading('addRequest');
       
-      // Simulate API call delay
-      setTimeout(() => {
-        const selectedMember = members.find(m => m.id == memberId);
+      try {
         const newRequest = {
-          id: Date.now(),
           memberId,
-          memberName: selectedMember ? selectedMember.name : 'Unknown',
           amount: parseFloat(amount),
-          requestType: 'payment', // Fixed to payment only
+          requestDate: new Date().toISOString().split('T')[0],
           paymentMonth,
           paymentMethod,
-          cashierName,
-          requestDate: new Date().toISOString().split('T')[0],
+          cashierName
+        };
+        
+        const createdRequest = await transactionRequestsService.createRequest(newRequest);
+        
+        // Add the created request to the local state
+        const selectedMember = members.find(m => m.id == memberId);
+        const requestWithMemberName = {
+          ...createdRequest,
+          memberName: selectedMember ? selectedMember.name : 'Unknown',
+          requestType: 'payment',
           status: 'pending'
         };
-        setRequests([...requests, newRequest]);
+        
+        setRequests([...requests, requestWithMemberName]);
         setMemberId('');
         setAmount('');
         setPaymentMonth('');
@@ -95,31 +104,36 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
         
         // Show success toast
         addToast('Transaction request submitted successfully!', 'success');
+      } catch (error) {
+        addToast(error.message || 'Failed to submit transaction request', 'error');
+      } finally {
         stopLoading('addRequest');
-      }, 500);
+      }
     } else {
       // Show error toast
       addToast('Please fill in all required fields', 'error');
     }
   };
 
-  const handleApprove = (requestId) => {
+  const handleApprove = async (requestId) => {
     startLoading(`approveRequest-${requestId}`);
     
-    // Simulate API call delay
-    setTimeout(() => {
+    try {
       const requestToApprove = requests.find(req => req.id === requestId);
       if (requestToApprove) {
+        // Update request status to approved
+        await transactionRequestsService.approveRequest(requestId);
+        
         // Add to payments
         const newPayment = {
           id: Date.now(),
-          memberId: requestToApprove.memberId,
+          memberId: requestToApprove.member_id || requestToApprove.memberId,
           memberName: requestToApprove.memberName,
           amount: requestToApprove.amount,
-          paymentMonth: requestToApprove.paymentMonth,
+          paymentMonth: requestToApprove.description || requestToApprove.paymentMonth,
           paymentDate: new Date().toISOString().split('T')[0],
-          paymentMethod: requestToApprove.paymentMethod,
-          cashierName: requestToApprove.cashierName,
+          paymentMethod: requestToApprove.payment_method || requestToApprove.paymentMethod,
+          cashierName: requestToApprove.cashier_name || requestToApprove.cashierName,
           status: 'completed'
         };
         setPayments([...payments, newPayment]);
@@ -130,20 +144,30 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
         // Show success toast
         addToast('Transaction request approved successfully!', 'success');
       }
+    } catch (error) {
+      addToast(error.message || 'Failed to approve transaction request', 'error');
+    } finally {
       stopLoading(`approveRequest-${requestId}`);
-    }, 500);
+    }
   };
 
-  const handleReject = (requestId) => {
+  const handleReject = async (requestId) => {
     startLoading(`rejectRequest-${requestId}`);
     
-    // Simulate API call delay
-    setTimeout(() => {
+    try {
+      // Update request status to rejected
+      await transactionRequestsService.rejectRequest(requestId);
+      
+      // Remove from requests
       setRequests(requests.filter(req => req.id !== requestId));
+      
       // Show success toast
       addToast('Transaction request rejected!', 'success');
+    } catch (error) {
+      addToast(error.message || 'Failed to reject transaction request', 'error');
+    } finally {
       stopLoading(`rejectRequest-${requestId}`);
-    }, 500);
+    }
   };
 
   // Filter suggestions based on input
@@ -246,16 +270,16 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
               {filteredRequests.length > 0 ? (
                 filteredRequests.map((request) => (
                   <tr key={request.id}>
-                    <td>{request.memberName}</td>
-                    <td>{request.requestType}</td>
-                    <td>{request.amount.toFixed(2)}</td>
-                    <td>{request.paymentMonth}</td>
-                    <td>{request.paymentMethod}</td>
-                    <td>{request.cashierName}</td>
-                    <td>{request.requestDate}</td>
+                    <td>{request.memberName || 'Unknown'}</td>
+                    <td>{request.requestType || 'payment'}</td>
+                    <td>{request.amount ? request.amount.toFixed(2) : '0.00'}</td>
+                    <td>{request.description || request.paymentMonth || 'N/A'}</td>
+                    <td>{request.payment_method || request.paymentMethod || 'N/A'}</td>
+                    <td>{request.cashier_name || request.cashierName || 'N/A'}</td>
+                    <td>{request.request_date || request.requestDate || 'N/A'}</td>
                     <td>
-                      <span className={`status-badge status-badge--${request.status}`}>
-                        {request.status}
+                      <span className={`status-badge status-badge--${request.status || 'pending'}`}>
+                        {request.status || 'pending'}
                       </span>
                     </td>
                     <td>
@@ -263,20 +287,23 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
                         {isLoading(`approveRequest-${request.id}`) || isLoading(`rejectRequest-${request.id}`) ? (
                           <LoadingSpinner size="small" />
                         ) : (
-                          <>
-                            <button 
-                              className="btn btn--success"
-                              onClick={() => handleApprove(request.id)}
-                            >
-                              Approve
-                            </button>
-                            <button 
-                              className="btn btn--danger"
-                              onClick={() => handleReject(request.id)}
-                            >
-                              Reject
-                            </button>
-                          </>
+                          // Only show action buttons for pending requests
+                          request.status === 'pending' && (
+                            <>
+                              <button 
+                                className="btn btn--success"
+                                onClick={() => handleApprove(request.id)}
+                              >
+                                Approve
+                              </button>
+                              <button 
+                                className="btn btn--danger"
+                                onClick={() => handleReject(request.id)}
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )
                         )}
                       </div>
                     </td>

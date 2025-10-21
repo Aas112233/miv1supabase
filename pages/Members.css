@@ -1,4 +1,4 @@
-.members {
+.members{
   padding: 20px;
   max-width: 100%;
   margin: 0 auto;
@@ -22,7 +22,7 @@
 
 .members-header-subtitle {
   margin: 0;
-  color: inherit;
+  color:inherit;
   font-size: 1rem;
   opacity: 0.8;
 }
@@ -71,7 +71,7 @@ body.theme-dark .stat-card {
   align-items: center;
   justify-content: center;
   margin-right: 20px;
-  flex-shrink: 0;
+ flex-shrink: 0;
 }
 
 .stat-card-icon--members {
@@ -149,7 +149,7 @@ body.theme-dark .members-list-header {
 .members-list-header h3 {
   margin: 0;
   color: inherit;
-  font-size: 1.4rem;
+ font-size: 1.4rem;
   font-weight: 600;
 }
 
@@ -171,7 +171,7 @@ body.theme-dark .members-list-header {
   border: 1px solid;
   transition: all 0.3s ease;
   width: 250px;
-  box-sizing: border-box;
+  box-sizing:border-box;
 }
 
 body.theme-light .search-input {
@@ -182,14 +182,14 @@ body.theme-light .search-input {
 
 body.theme-dark .search-input {
   background-color: #2d2d2d;
-  color: #e9ecef;
+  color:#e9ecef;
   border-color: #495057;
 }
 
 .search-input:focus {
   outline: 0;
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-  width: 300px;
+  width:300px;
 }
 
 body.theme-light .search-input:focus {
@@ -254,7 +254,7 @@ body.theme-dark .data-table td {
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: inherit;
+ color: inherit;
 }
 
 .data-table tbody tr {
@@ -297,7 +297,7 @@ body.theme-dark .share-amount {
   width: 36px;
   height: 36px;
   display: flex;
-  align-items: center;
+align-items: center;
   justify-content: center;
   border: none;
   cursor: pointer;
@@ -307,7 +307,7 @@ body.theme-dark .share-amount {
 
 .btn--icon:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8pxrgba(0, 0, 0, 0.1);
 }
 
 .btn--icon:active {
@@ -319,7 +319,7 @@ body.theme-dark .share-amount {
   height: 16px;
   display: block;
   fill: currentColor;
-  stroke: currentColor;
+  stroke:currentColor;
 }
 
 .btn--secondary {
@@ -405,7 +405,7 @@ body.theme-dark .btn--danger:hover {
   padding: 20px;
 }
 
-.overlay-content {
+.overlay-content{
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   width: 100%;
@@ -499,7 +499,7 @@ body.theme-dark .overlay-close:hover {
   border-radius: 8px;
   font-size: 1rem;
   border: 1px solid;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition: border-color 0.3sease, box-shadow 0.3s ease;
   box-sizing: border-box;
 }
 
@@ -517,7 +517,7 @@ body.theme-dark .form-group input {
 
 .form-group input:focus {
   outline: 0;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+  box-shadow: 0 0 0 3px rgba(0, 123,255, 0.25);
 }
 
 body.theme-light .form-group input:focus {
@@ -531,7 +531,7 @@ body.theme-dark .form-group input:focus {
 .form-hint {
   margin-top: 8px;
   font-size: 0.85rem;
-  opacity: 0.8;
+opacity: 0.8;
 }
 
 .form-actions {
@@ -614,7 +614,7 @@ body.theme-dark .btn--secondary:hover {
   background-color: #343a40;
 }
 
-/* Responsive adjustments */
+/*Responsive adjustments */
 @media (max-width: 1024px) {
   .members {
     padding: 18px;
@@ -637,8 +637,7 @@ body.theme-dark .btn--secondary:hover {
   .stat-card {
     padding: 22px;
   }
-  
-  .stat-card-content h3 {
+.stat-card-content h3 {
     font-size: 2rem;
   }
   
@@ -690,7 +689,7 @@ body.theme-dark .btn--secondary:hover {
 @media (max-width: 768px) {
   .members {
     padding: 15px;
-  }
+ }
   
   .members-header {
     margin-bottom: 20px;
@@ -717,7 +716,7 @@ body.theme-dark .btn--secondary:hover {
   }
   
   .stat-card-icon {
-    width: 50px;
+   width: 50px;
     height: 50px;
     margin-right: 15px;
   }
@@ -756,7 +755,7 @@ body.theme-dark .btn--secondary:hover {
   }
   
   .overlay-content {
-    max-width: 95%;
+    max-width:95%;
   }
   
   .overlay-header {
@@ -771,7 +770,7 @@ body.theme-dark .btn--secondary:hover {
     padding: 20px;
   }
   
-  .form-row {
+.form-row {
     grid-template-columns: 1fr;
     gap: 15px;
     margin-bottom: 15px;
@@ -820,8 +819,7 @@ body.theme-dark .btn--secondary:hover {
   .members-header-subtitle {
     font-size: 0.9rem;
   }
-  
-  .members-stats {
+.members-stats {
     gap: 12px;
   }
   
@@ -833,7 +831,7 @@ body.theme-dark .btn--secondary:hover {
     width: 45px;
     height: 45px;
     margin-right: 12px;
-  }
+ }
   
   .stat-card-content h3 {
     font-size: 1.5rem;
@@ -873,7 +871,7 @@ body.theme-dark .btn--secondary:hover {
   
   .no-members {
     padding: 40px 15px;
-  }
+ }
   
   .no-members-icon {
     width: 50px;

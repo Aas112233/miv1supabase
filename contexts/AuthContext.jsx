@@ -21,14 +21,16 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        authService.init();
         // Optionally, you could validate the token with the server here
         // For now, we'll just check if a token exists
-        const token = authService.getToken();
-        if (token) {
+        const session = authService.getSession();
+        if (session) {
           // In a more robust implementation, you might want to validate the token
           // with the server to ensure it's still valid
           setIsLoggedIn(true);
+          // Set current user if needed
+          const user = await authService.getCurrentUser();
+          setCurrentUser(user);
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
@@ -45,8 +47,8 @@ export const AuthProvider = ({ children }) => {
       const response = await authService.login(email, password);
       setCurrentUser(response.user);
       setIsLoggedIn(true);
-      // Store token for persistence
-      authService.storeToken(response.token);
+      // Store session for persistence
+      authService.storeSession(response.session);
       return response;
     } catch (error) {
       throw error;
@@ -58,12 +60,12 @@ export const AuthProvider = ({ children }) => {
       await authService.logout();
       setCurrentUser(null);
       setIsLoggedIn(false);
-      authService.removeToken();
+      authService.removeSession();
     } catch (error) {
       // Even if logout fails, clear local state
       setCurrentUser(null);
       setIsLoggedIn(false);
-      authService.removeToken();
+      authService.removeSession();
       throw error;
     }
   };

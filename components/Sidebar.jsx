@@ -14,7 +14,8 @@ import {
   FaCog, 
   FaSignOutAlt,
   FaChevronLeft,
-  FaChevronRight
+  FaChevronRight,
+  FaVial
 } from 'react-icons/fa';
 import './Sidebar.css';
 
@@ -143,6 +144,15 @@ const Sidebar = ({ currentUser, onLogout }) => {
             >
               <FaCog className="nav-icon" />
               {!isCollapsed && 'Settings'}
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="/test" 
+              className={isActive('/test') ? 'active' : ''}
+            >
+              <FaVial className="nav-icon" />
+              {!isCollapsed && 'Supabase Test'}
             </Link>
           </li>
           {/* Removed Google Sheets Test link */}

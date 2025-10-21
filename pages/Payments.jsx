@@ -3,6 +3,7 @@ import { useToast } from '../contexts/ToastContext';
 import useLoading from '../hooks/useLoading';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { hasWritePermission } from '../components/PermissionChecker';
+import paymentsService from '../api/paymentsService';
 import './Payments.css';
 
 const Payments = ({ payments, setPayments, members, currentUser }) => {
@@ -110,26 +111,32 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
     };
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (memberId && amount && paymentMonth && paymentDate && paymentMethod && cashierName) {
       startLoading('addPayment');
       
-      // Simulate API call delay
-      setTimeout(() => {
-        const selectedMember = members.find(m => m.id == memberId);
+      try {
         const newPayment = {
-          id: Date.now(),
           memberId,
-          memberName: selectedMember ? selectedMember.name : 'Unknown',
           amount: parseFloat(amount),
           paymentMonth,
           paymentDate,
           paymentMethod,
-          cashierName,
+          cashierName
+        };
+        
+        const createdPayment = await paymentsService.createPayment(newPayment);
+        
+        // Add the created payment to the local state
+        const selectedMember = members.find(m => m.id == memberId);
+        const paymentWithMemberName = {
+          ...createdPayment,
+          memberName: selectedMember ? selectedMember.name : 'Unknown',
           status: 'completed'
         };
-        setPayments([...payments, newPayment]);
+        
+        setPayments([...payments, paymentWithMemberName]);
         setMemberId('');
         setAmount('');
         setIsSharePayment(false);
@@ -141,8 +148,11 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
         
         // Show success toast
         addToast('Payment added successfully!', 'success');
+      } catch (error) {
+        addToast(error.message || 'Failed to add payment', 'error');
+      } finally {
         stopLoading('addPayment');
-      }, 500);
+      }
     } else {
       // Show error toast
       addToast('Please fill in all required fields', 'error');
@@ -198,10 +208,10 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                 <td>{payment.id}</td>
                 <td>{payment.memberName}</td>
                 <td>{payment.amount.toFixed(2)}</td>
-                <td>{payment.paymentMonth}</td>
-                <td>{payment.paymentDate}</td>
-                <td>{payment.paymentMethod}</td>
-                <td>{payment.cashierName}</td>
+                <td>{payment.description || payment.paymentMonth}</td>
+                <td>{payment.payment_date || payment.paymentDate}</td>
+                <td>{payment.payment_method || payment.paymentMethod}</td>
+                <td>{payment.cashier_name || payment.cashierName}</td>
                 <td>
                   <span className={`status-badge status-badge--${payment.status}`}>
                     {payment.status}

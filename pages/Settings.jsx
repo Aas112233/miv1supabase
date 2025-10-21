@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import AuditLogViewer from '../components/AuditLogViewer';
 import './Settings.css';
 
 const Settings = ({ 
@@ -107,6 +108,12 @@ const Settings = ({
               Data Management
             </li>
             <li 
+              className={activeSection === 'audit' ? 'active' : ''} 
+              onClick={() => setActiveSection('audit')}
+            >
+              Audit Logs
+            </li>
+            <li 
               className={activeSection === 'appearance' ? 'active' : ''} 
               onClick={() => setActiveSection('appearance')}
             >
@@ -201,6 +208,14 @@ const Settings = ({
                 </button>
                 <p className="warning">Warning: This will permanently delete all data</p>
               </div>
+            </div>
+          )}
+          
+          {activeSection === 'audit' && (
+            <div className="settings-section">
+              <h2>Audit Logs</h2>
+              <p>View all system activities and user actions.</p>
+              <AuditLogViewer currentUser={currentUser} />
             </div>
           )}
           

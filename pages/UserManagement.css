@@ -1,0 +1,511 @@
+/* UserManagement.css */
+.user-management {
+  padding: 20px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.user-management h1 {
+  margin: 0 0 25px 0;
+  color: inherit;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.users-list {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  margin-bottom: 30px;
+}
+
+body.theme-dark .users-list {
+  background-color: #1e1e1e;
+  border: 1px solid #343a40;
+}
+
+.users-header {
+  padding: 20px 25px;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+body.theme-dark .users-header {
+  border-bottom-color: #343a40;
+}
+
+.users-header h2 {
+  margin: 0;
+  color: inherit;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.users-table-container {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+}
+
+.data-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+body.theme-light .data-table thead {
+  background-color: #f8f9fa;
+}
+
+body.theme-dark .data-table thead {
+  background-color: #2d2d2d;
+}
+
+.data-table th,
+.data-table td {
+  padding: 16px 20px;
+  text-align: left;
+  border-bottom: 1px solid;
+}
+
+body.theme-light .data-table th,
+body.theme-light .data-table td {
+  border-bottom-color: #dee2e6;
+}
+
+body.theme-dark .data-table th,
+body.theme-dark .data-table td {
+  border-bottom-color: #343a40;
+}
+
+.data-table th {
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: inherit;
+}
+
+.data-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+body.theme-light .data-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+body.theme-dark .data-table tbody tr:hover {
+  background-color: #2d2d2d;
+}
+
+.role-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.role-badge.admin {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.role-badge.member {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+body.theme-dark .role-badge.admin {
+  background-color: #4caf50;
+  color: #ffffff;
+}
+
+body.theme-dark .role-badge.member {
+  background-color: #6c757d;
+  color: #ffffff;
+}
+
+/* Permissions Modal */
+.permissions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin: 25px 0;
+}
+
+.permissions-header {
+  display: contents;
+  font-weight: 600;
+}
+
+.permissions-row {
+  display: contents;
+}
+
+.screen-name {
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+.permission-type,
+.permission-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.permission-toggle input[type="checkbox"] {
+  display: none;
+}
+
+.toggle-label {
+  width: 40px;
+  height: 20px;
+  background-color: #ccc;
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  display: inline-block;
+  transition: background-color 0.3s;
+}
+
+.toggle-label::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: white;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s;
+}
+
+.permission-toggle input[type="checkbox"]:checked + .toggle-label {
+  background-color: #007bff;
+}
+
+.permission-toggle input[type="checkbox"]:checked + .toggle-label::after {
+  transform: translateX(20px);
+}
+
+/* Overlay styles */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.overlay-content {
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  padding: 25px;
+}
+
+body.theme-light .overlay-content {
+  background-color: #ffffff;
+}
+
+body.theme-dark .overlay-content {
+  background-color: #1e1e1e;
+}
+
+.overlay-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+body.theme-dark .overlay-header {
+  border-bottom-color: #343a40;
+}
+
+.overlay-header h2 {
+  margin: 0;
+  color: inherit;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  transition: background-color 0.2s ease;
+  font-size: 1.5rem;
+  font-weight: normal;
+}
+
+body.theme-light .close-btn {
+  color: #6c757d;
+}
+
+body.theme-dark .close-btn {
+  color: #95a5a6;
+}
+
+.close-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+body.theme-light .close-btn:hover {
+  background-color: #e9ecef;
+}
+
+body.theme-dark .close-btn:hover {
+  background-color: #343a40;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e9ecef;
+}
+
+body.theme-dark .form-actions {
+  border-top-color: #343a40;
+}
+
+/* Buttons */
+.btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  border: none;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn--primary {
+  color: white;
+}
+
+body.theme-light .btn--primary {
+  background-color: #007bff;
+}
+
+body.theme-light .btn--primary:hover {
+  background-color: #0069d9;
+}
+
+body.theme-dark .btn--primary {
+  background-color: #1976d2;
+}
+
+body.theme-dark .btn--primary:hover {
+  background-color: #1565c0;
+}
+
+.btn--secondary {
+  color: white;
+}
+
+body.theme-light .btn--secondary {
+  background-color: #6c757d;
+}
+
+body.theme-light .btn--secondary:hover {
+  background-color: #5a6268;
+}
+
+body.theme-dark .btn--secondary {
+  background-color: #495057;
+}
+
+body.theme-dark .btn--secondary:hover {
+  background-color: #343a40;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .user-management {
+    padding: 15px;
+  }
+  
+  .user-management h1 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+  }
+  
+  .users-header {
+    padding: 15px 20px;
+  }
+  
+  .users-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 12px 15px;
+    font-size: 0.9rem;
+  }
+  
+  .permissions-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  
+  .screen-name {
+    font-size: 0.9rem;
+  }
+  
+  .overlay {
+    padding: 15px;
+  }
+  
+  .overlay-content {
+    max-width: 95%;
+    padding: 20px;
+  }
+  
+  .overlay-header {
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+  }
+  
+  .overlay-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .form-actions {
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 15px;
+  }
+  
+  .btn {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-management {
+    padding: 10px;
+  }
+  
+  .user-management h1 {
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+  }
+  
+  .users-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 12px 15px;
+  }
+  
+  .data-table {
+    display: block;
+    overflow-x: auto;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 10px 12px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+  
+  .permissions-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .permissions-header,
+  .permissions-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  body.theme-dark .permissions-header,
+  body.theme-dark .permissions-row {
+    border-bottom-color: #343a40;
+  }
+  
+  .screen-name {
+    grid-column: 1 / -1;
+    font-weight: 600;
+    padding-bottom: 5px;
+  }
+  
+  .permission-type,
+  .permission-toggle {
+    justify-content: flex-start;
+  }
+  
+  .overlay-content {
+    padding: 15px;
+  }
+  
+  .overlay-header {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+  }
+  
+  .overlay-header h2 {
+    font-size: 1.2rem;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .btn {
+    width: 100%;
+  }
+}

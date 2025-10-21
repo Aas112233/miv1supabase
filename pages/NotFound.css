@@ -1,0 +1,171 @@
+.not-found {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 60px);
+  padding: 20px;
+}
+
+.not-found-container {
+  text-align: center;
+  max-width: 500px;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+body.theme-light .not-found-container {
+  background-color: #ffffff;
+  border: 1px solid #e9ecef;
+}
+
+body.theme-dark .not-found-container {
+  background-color: #1e1e1e;
+  border: 1px solid #343a40;
+}
+
+.not-found-icon {
+  margin-bottom: 20px;
+  color: #dc3545;
+}
+
+.not-found h1 {
+  margin: 0 0 15px 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.not-found-message {
+  font-size: 1.1rem;
+  margin: 0 0 10px 0;
+  color: inherit;
+  opacity: 0.9;
+}
+
+.not-found-instructions {
+  font-size: 1rem;
+  margin: 0 0 30px 0;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.not-found-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  border: none;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn--primary {
+  color: white;
+}
+
+body.theme-light .btn--primary {
+  background-color: #007bff;
+}
+
+body.theme-light .btn--primary:hover {
+  background-color: #0069d9;
+}
+
+body.theme-dark .btn--primary {
+  background-color: #1976d2;
+}
+
+body.theme-dark .btn--primary:hover {
+  background-color: #1565c0;
+}
+
+.btn--secondary {
+  color: white;
+}
+
+body.theme-light .btn--secondary {
+  background-color: #6c757d;
+}
+
+body.theme-light .btn--secondary:hover {
+  background-color: #5a6268;
+}
+
+body.theme-dark .btn--secondary {
+  background-color: #495057;
+}
+
+body.theme-dark .btn--secondary:hover {
+  background-color: #343a40;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .not-found {
+    padding: 15px;
+  }
+  
+  .not-found-container {
+    padding: 30px 20px;
+  }
+  
+  .not-found h1 {
+    font-size: 1.7rem;
+  }
+  
+  .not-found-message {
+    font-size: 1rem;
+  }
+  
+  .not-found-instructions {
+    font-size: 0.9rem;
+  }
+  
+  .not-found-actions {
+    gap: 10px;
+  }
+  
+  .btn {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .not-found-container {
+    padding: 25px 15px;
+  }
+  
+  .not-found h1 {
+    font-size: 1.5rem;
+  }
+  
+  .not-found-actions {
+    flex-direction: column;
+  }
+  
+  .btn {
+    width: 100%;
+  }
+}

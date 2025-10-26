@@ -51,51 +51,97 @@ body.theme-dark .stat-card {
   align-items: center;
   justify-content: center;
   margin-right: 20px;
-  font-size: 1.5rem;
-  color: white;
+  flex-shrink: 0;
 }
 
 .stat-icon--members {
-  background-color: #17a2b8;
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+body.theme-dark .stat-icon--members {
+  background-color: #0d47a1;
+  color: #bbdefb;
 }
 
 .stat-icon--shares {
-  background-color: #28a745;
+  background-color: #e8f5e9;
+  color: #388e3c;
+}
+
+body.theme-dark .stat-icon--shares {
+  background-color: #1b5e20;
+  color: #c8e6c9;
 }
 
 .stat-icon--payments {
-  background-color: #ffc107;
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+body.theme-dark .stat-icon--payments {
+  background-color: #e65100;
+  color: #ffcc80;
 }
 
 .stat-icon--amount {
-  background-color: #007bff;
+  background-color: #e0f7fa;
+  color: #0097a7;
+}
+
+body.theme-dark .stat-icon--amount {
+  background-color: #006064;
+  color: #80deea;
 }
 
 .stat-icon--expenses {
-  background-color: #dc3545;
+  background-color: #ffebee;
+  color: #d32f2f;
+}
+
+body.theme-dark .stat-icon--expenses {
+  background-color: #b71c1c;
+  color: #ffcdd2;
 }
 
 .stat-icon--projects {
-  background-color: #17a2b8;
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+}
+
+body.theme-dark .stat-icon--projects {
+  background-color: #4a0072;
+  color: #ce93d8;
 }
 
 .stat-info h3 {
   margin: 0 0 5px 0;
   font-size: 1.8rem;
-  color: inherit;
   font-weight: 700;
+  color: inherit;
 }
 
 .stat-info p {
   margin: 0;
-  color: inherit;
-  opacity: 0.8;
+  font-size: 1rem;
+  color: #6c757d;
 }
 
-/* Charts Section */
+body.theme-dark .stat-info p {
+  color: #adb5bd;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  padding: 40px 20px;
+}
+
 .dashboard-charts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
   gap: 25px;
   margin-bottom: 30px;
 }
@@ -114,23 +160,23 @@ body.theme-dark .chart-container {
 }
 
 .chart-container h3 {
-  margin: 0 0 15px 0;
-  color: inherit;
-  font-size: 1.2rem;
+  margin: 0 0 20px 0;
+  font-size: 1.3rem;
   font-weight: 600;
+  color: inherit;
 }
 
 .chart-wrapper {
-  height: 300px;
+  height: 350px;
+  width: 100%;
 }
 
-/* Custom Tooltip */
 .custom-tooltip {
   background-color: #ffffff;
   border: 1px solid #e9ecef;
   border-radius: 8px;
-  padding: 15px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 body.theme-dark .custom-tooltip {
@@ -139,30 +185,44 @@ body.theme-dark .custom-tooltip {
 }
 
 .tooltip-label {
+  margin: 0 0 8px 0;
   font-weight: 600;
-  margin-bottom: 5px;
-  color: inherit;
+  color: #343a40;
 }
 
-/* Recent Payments */
+body.theme-dark .tooltip-label {
+  color: #e9ecef;
+}
+
+.dashboard-recent {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  margin-bottom: 30px;
+}
+
+body.theme-dark .dashboard-recent {
+  background-color: #1e1e1e;
+  border-color: #343a40;
+}
+
 .dashboard-recent h3 {
-  margin: 0 0 15px 0;
-  color: inherit;
+  margin: 0 0 20px 0;
   font-size: 1.3rem;
   font-weight: 600;
+  color: inherit;
 }
 
 .recent-payments {
-  background-color: #ffffff;
-  border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+  border-radius: 8px;
 }
 
 body.theme-dark .recent-payments {
-  background-color: #1e1e1e;
-  border-color: #343a40;
+  background-color: #2d2d2d;
 }
 
 .payment-item {
@@ -174,7 +234,7 @@ body.theme-dark .recent-payments {
 }
 
 body.theme-dark .payment-item {
-  border-bottom-color: #343a40;
+  border-color: #343a40;
 }
 
 .payment-item:last-child {
@@ -183,48 +243,57 @@ body.theme-dark .payment-item {
 
 .payment-member {
   font-weight: 500;
-  color: inherit;
+  color: #343a40;
+}
+
+body.theme-dark .payment-member {
+  color: #e9ecef;
 }
 
 .payment-amount {
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 1.2rem;
   color: #007bff;
 }
 
 body.theme-dark .payment-amount {
-  color: #1976d2;
+  color: #64b5f6;
 }
 
 .payment-date {
-  color: inherit;
-  opacity: 0.7;
+  color: #6c757d;
   font-size: 0.9rem;
+}
+
+body.theme-dark .payment-date {
+  color: #adb5bd;
 }
 
 .no-payments {
   text-align: center;
-  padding: 30px;
-  color: inherit;
-  opacity: 0.7;
+  color: #6c757d;
   font-style: italic;
+  padding: 30px;
 }
 
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 60px 20px;
-  min-height: 300px;
+body.theme-dark .no-payments {
+  color: #adb5bd;
 }
 
-/* Responsive adjustments */
-@media (max-width: 1024px) {
+/* Responsive styles */
+@media (max-width: 1200px) {
+  .dashboard-charts {
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  }
+}
+
+@media (max-width: 992px) {
   .dashboard-charts {
     grid-template-columns: 1fr;
   }
   
-  .chart-container {
-    padding: 15px;
+  .chart-wrapper {
+    height: 300px;
   }
 }
 
@@ -233,12 +302,8 @@ body.theme-dark .payment-amount {
     padding: 15px;
   }
   
-  .dashboard-header h2 {
-    font-size: 1.5rem;
-  }
-  
   .dashboard-stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 15px;
   }
   

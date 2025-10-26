@@ -17,7 +17,8 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     totalPayments: 0,
     totalAmount: 0,
     totalExpenses: 0,
-    activeProjects: 0
+    activeProjects: 0,
+    netBalance: 0
   });
   
   const { startLoading, stopLoading, isLoading } = useLoading();
@@ -28,9 +29,9 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     
     // Simulate API call delay
     setTimeout(() => {
-      const totalShares = members.reduce((sum, member) => sum + member.shareAmount, 0);
-      const totalAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
-      const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+      const totalShares = members.reduce((sum, member) => sum + (member.shareAmount || 0), 0);
+      const totalAmount = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+      const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
       const activeProjects = projects.filter(p => p.status === 'Active').length;
       
       setStats({
@@ -39,7 +40,8 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
         totalPayments: payments.length,
         totalAmount,
         totalExpenses,
-        activeProjects
+        activeProjects,
+        netBalance: totalAmount - totalExpenses
       });
       
       stopLoading('loadStats');
@@ -58,10 +60,10 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     // Calculate cumulative savings
     let cumulativeAmount = 0;
     return sortedPayments.map(payment => {
-      cumulativeAmount += payment.amount;
+      cumulativeAmount += payment.amount || 0;
       return {
         date: payment.paymentDate,
-        amount: cumulativeAmount
+        amount: parseFloat(cumulativeAmount.toFixed(2))
       };
     });
   }, [payments]);
@@ -73,6 +75,8 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     // Group payments by month
     const monthlyData = {};
     payments.forEach(payment => {
+      if (!payment.paymentDate) return;
+      
       const date = new Date(payment.paymentDate);
       const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
       const monthName = date.toLocaleString('default', { month: 'short', year: 'numeric' });
@@ -80,7 +84,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
       if (!monthlyData[monthKey]) {
         monthlyData[monthKey] = { month: monthName, amount: 0 };
       }
-      monthlyData[monthKey].amount += payment.amount;
+      monthlyData[monthKey].amount += payment.amount || 0;
     });
     
     // Convert to array and sort by date
@@ -104,29 +108,41 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     // Calculate total contributions per member
     const memberContributions = {};
     payments.forEach(payment => {
+      if (!payment.memberId || !payment.amount) return;
+      
       if (!memberContributions[payment.memberId]) {
+        const member = members.find(m => m.id === payment.memberId);
         memberContributions[payment.memberId] = {
-          name: payment.memberName,
+          name: member ? member.name : 'Unknown',
           amount: 0
         };
       }
       memberContributions[payment.memberId].amount += payment.amount;
     });
     
-    // Convert to array
-    return Object.values(memberContributions);
+    // Convert to array and sort by amount (descending)
+    return Object.values(memberContributions)
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 10); // Show top 10 contributors
   }, [payments, members]);
 
   // Prepare data for Project Revenue/Loss chart
   const projectFinancialsData = useMemo(() => {
     if (!projects.length) return [];
     
-    return projects.map(project => ({
-      name: project.name,
-      revenue: project.total_revenue || 0,
-      investment: project.initial_investment || 0,
-      profit: (project.total_revenue || 0) - (project.initial_investment || 0)
-    })).slice(0, 10);
+    return projects.map(project => {
+      const revenue = project.total_revenue || 0;
+      const investment = project.initial_investment || 0;
+      const profit = revenue - investment;
+      
+      return {
+        name: project.name,
+        revenue: parseFloat(revenue.toFixed(2)),
+        investment: parseFloat(investment.toFixed(2)),
+        profit: parseFloat(profit.toFixed(2))
+      };
+    }).sort((a, b) => b.profit - a.profit) // Sort by profit (descending)
+    .slice(0, 10); // Show top 10 projects
   }, [projects]);
 
   // Prepare data for Top Performing Payment Months chart
@@ -136,6 +152,8 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     // Group payments by month
     const monthlyData = {};
     payments.forEach(payment => {
+      if (!payment.paymentDate || !payment.amount) return;
+      
       const date = new Date(payment.paymentDate);
       const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
       const monthName = date.toLocaleString('default', { month: 'short', year: 'numeric' });
@@ -165,7 +183,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
           <p className="tooltip-label">{label}</p>
           {payload.map((entry, index) => (
             <p key={index} style={{ color: entry.color }}>
-              {entry.name}: {typeof entry.value === 'number' ? entry.value.toFixed(2) : entry.value}
+              {entry.name}: {typeof entry.value === 'number' ? `৳${entry.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : entry.value}
             </p>
           ))}
         </div>
@@ -274,7 +292,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                     />
                     <YAxis 
                       tick={{ fontSize: 12 }}
-                      tickFormatter={(value) => value.toLocaleString()}
+                      tickFormatter={(value) => `৳${value.toLocaleString()}`}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />
@@ -285,7 +303,8 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                       stroke="#007bff" 
                       strokeWidth={2}
                       dot={{ r: 4 }}
-                      activeDot={{ r: 6 }}
+                      activeDot={{ r: 6, stroke: '#007bff', strokeWidth: 2, fill: '#fff' }}
+                      animationDuration={300}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -308,7 +327,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                     />
                     <YAxis 
                       tick={{ fontSize: 12 }}
-                      tickFormatter={(value) => value.toLocaleString()}
+                      tickFormatter={(value) => `৳${value.toLocaleString()}`}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />
@@ -319,7 +338,8 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                       stroke="#28a745" 
                       strokeWidth={2}
                       dot={{ r: 4 }}
-                      activeDot={{ r: 6 }}
+                      activeDot={{ r: 6, stroke: '#28a745', strokeWidth: 2, fill: '#fff' }}
+                      animationDuration={300}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -328,25 +348,31 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
 
             {/* Member Contribution Distribution Chart */}
             <div className="chart-container">
-              <h3>Member Contribution Distribution</h3>
+              <h3>Top Member Contributions</h3>
               <div className="chart-wrapper">
                 <ResponsiveContainer width="100%" height={300}>
-                  <RadarChart data={memberContributionData}>
-                    <PolarGrid />
-                    <PolarAngleAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <PolarRadiusAxis 
-                      tick={{ fontSize: 12 }} 
-                      tickFormatter={(value) => value.toLocaleString()}
+                  <BarChart data={memberContributionData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      type="number" 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => `৳${value.toLocaleString()}`}
+                    />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      tick={{ fontSize: 12 }}
+                      width={100}
                     />
                     <Tooltip content={<CustomTooltip />} />
-                    <Radar
-                      name="Contribution (৳)"
-                      dataKey="amount"
-                      stroke="#ffc107"
-                      fill="#ffc107"
-                      fillOpacity={0.6}
+                    <Legend />
+                    <Bar 
+                      dataKey="amount" 
+                      name="Contribution (৳)" 
+                      fill="#ffc107" 
+                      animationDuration={300}
                     />
-                  </RadarChart>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -356,7 +382,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
               <h3>Project Financial Overview</h3>
               <div className="chart-wrapper">
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={projectFinancialsData}>
+                  <BarChart data={projectFinancialsData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="name" 
@@ -367,32 +393,29 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                     />
                     <YAxis 
                       tick={{ fontSize: 12 }}
-                      tickFormatter={(value) => value.toLocaleString()}
+                      tickFormatter={(value) => `৳${value.toLocaleString()}`}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />
-                    <Line 
-                      type="monotone" 
+                    <Bar 
                       dataKey="revenue" 
                       name="Revenue (৳)" 
-                      stroke="#28a745" 
-                      strokeWidth={2}
+                      fill="#28a745" 
+                      animationDuration={300}
                     />
-                    <Line 
-                      type="monotone" 
+                    <Bar 
                       dataKey="investment" 
                       name="Investment (৳)" 
-                      stroke="#ffc107" 
-                      strokeWidth={2}
+                      fill="#ffc107" 
+                      animationDuration={300}
                     />
-                    <Line 
-                      type="monotone" 
+                    <Bar 
                       dataKey="profit" 
                       name="Profit/Loss (৳)" 
-                      stroke="#007bff" 
-                      strokeWidth={2}
+                      fill={projectFinancialsData.map(item => item.profit >= 0 ? "#007bff" : "#dc3545")} 
+                      animationDuration={300}
                     />
-                  </LineChart>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -407,7 +430,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                     <XAxis 
                       type="number" 
                       tick={{ fontSize: 12 }}
-                      tickFormatter={(value) => value.toLocaleString()}
+                      tickFormatter={(value) => `৳${value.toLocaleString()}`}
                     />
                     <YAxis 
                       dataKey="month" 
@@ -421,6 +444,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                       dataKey="amount" 
                       name="Total Amount (৳)" 
                       fill="#17a2b8" 
+                      animationDuration={300}
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -434,9 +458,9 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
               <div className="recent-payments">
                 {payments.slice(0, 5).map((payment) => (
                   <div className="payment-item" key={payment.id}>
-                    <div className="payment-member">{payment.memberName}</div>
-                    <div className="payment-amount">৳{payment.amount.toFixed(2)}</div>
-                    <div className="payment-date">{payment.paymentDate}</div>
+                    <div className="payment-member">{payment.memberName || 'Unknown Member'}</div>
+                    <div className="payment-amount">৳{(payment.amount || 0).toFixed(2)}</div>
+                    <div className="payment-date">{payment.paymentDate || 'Unknown Date'}</div>
                   </div>
                 ))}
               </div>

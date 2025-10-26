@@ -67,7 +67,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     return sortedPayments.map(payment => {
       cumulativeAmount += payment.amount || 0;
       return {
-        date: payment.paymentDate,
+        date: payment.payment_date,
         amount: parseFloat(cumulativeAmount.toFixed(2))
       };
     });
@@ -81,9 +81,9 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     const monthlyData = {};
     payments.forEach(payment => {
       // Check if payment has a valid date
-      if (!payment.paymentDate || isNaN(new Date(payment.paymentDate))) return;
+      if (!payment.payment_date || isNaN(new Date(payment.payment_date))) return;
       
-      const date = new Date(payment.paymentDate);
+      const date = new Date(payment.payment_date);
       const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
       const monthName = date.toLocaleString('default', { month: 'short', year: 'numeric' });
       
@@ -121,10 +121,10 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     const memberContributions = {};
     payments.forEach(payment => {
       // Check if payment has required data
-      if (!payment.memberId || !payment.amount) return;
+      if (!payment.member_id || !payment.amount) return;
       
       if (!memberContributions[payment.memberId]) {
-        const member = members.find(m => m.id === payment.memberId);
+        const member = members.find(m => m.id === payment.member_id);
         memberContributions[payment.memberId] = {
           name: member && member.name ? member.name : 'Unknown',
           amount: 0
@@ -483,11 +483,11 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                   .slice(0, 5)
                   .map((payment) => (
                   <div className="payment-item" key={payment.id}>
-                    <div className="payment-member">{payment.memberName || 'Unknown Member'}</div>
+                    <div className="payment-member">{payment.memberName || payment.members?.name || 'Unknown Member'}</div>
                     <div className="payment-amount">৳{(payment.amount || 0).toFixed(2)}</div>
                     <div className="payment-date">
-                      {payment.paymentDate && !isNaN(new Date(payment.paymentDate)) 
-                        ? new Date(payment.paymentDate).toLocaleDateString() 
+                      {payment.payment_date && !isNaN(new Date(payment.payment_date)) 
+                        ? new Date(payment.payment_date).toLocaleDateString() 
                         : 'Invalid Date'}
                     </div>
                   </div>

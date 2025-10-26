@@ -18,7 +18,7 @@ const Settings = ({
   setTheme
 }) => {
   const { language, setLanguage } = useLanguage();
-  const [activeSection, setActiveSection] = useState('general');
+  const [activeSection, setActiveSection] = useState('notifications');
   const [colorTheme, setColorTheme] = useState(localStorage.getItem('colorTheme') || 'blue');
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
@@ -107,13 +107,6 @@ const Settings = ({
         <div className="settings-sidebar">
           <ul>
             <li 
-              className={activeSection === 'general' ? 'active' : ''} 
-              onClick={() => setActiveSection('general')}
-            >
-              <FaCog className="sidebar-icon" />
-              <span>General</span>
-            </li>
-            <li 
               className={activeSection === 'notifications' ? 'active' : ''} 
               onClick={() => setActiveSection('notifications')}
             >
@@ -145,28 +138,6 @@ const Settings = ({
         </div>
         
         <div className="settings-content">
-          {activeSection === 'general' && (
-            <div className="settings-section">
-              <h2>General Settings</h2>
-              <div className="setting-item">
-                <label>Club Name</label>
-                <input type="text" defaultValue="Investment Club" />
-              </div>
-              <div className="setting-item">
-                <label>Currency</label>
-                <select defaultValue="BDT">
-                  <option value="BDT">BDT (Bangladeshi Taka)</option>
-                  <option value="USD">USD (US Dollar)</option>
-                  <option value="EUR">EUR (Euro)</option>
-                </select>
-              </div>
-              <div className="setting-item">
-                <label>Financial Year Start</label>
-                <input type="date" defaultValue={new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]} />
-              </div>
-            </div>
-          )}
-          
           {activeSection === 'notifications' && (
             <div className="settings-section">
               <h2>Notification Settings</h2>

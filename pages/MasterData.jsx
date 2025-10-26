@@ -18,6 +18,8 @@ const MasterData = ({ currentUser }) => {
   const { startLoading, stopLoading, isLoading } = useLoading();
 
   const categories = [
+    { id: 'club_name', name: 'Club Name' },
+    { id: 'cashier_name', name: 'Cashier Names' },
     { id: 'payment_method', name: 'Payment Methods' },
     { id: 'expense_category', name: 'Expense Categories' },
     { id: 'project_category', name: 'Project Categories' },

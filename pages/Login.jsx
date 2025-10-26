@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUsers, FaSignInAlt, FaLock, FaEnvelope } from 'react-icons/fa';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -6,6 +6,7 @@ import authService from '../api/authService';
 import auditService from '../api/auditService';
 import userService from '../api/userService';
 import permissionsService from '../api/permissionsService';
+import masterDataService from '../api/masterDataService';
 import './Login.css';
 
 const Login = ({ onLogin }) => {
@@ -21,7 +22,22 @@ const Login = ({ onLogin }) => {
   const [showMessage, setShowMessage] = useState(false);
   const [messageType, setMessageType] = useState('');
   const [messageText, setMessageText] = useState('');
+  const [clubName, setClubName] = useState('Investment Club');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    loadClubName();
+  }, []);
+
+  const loadClubName = async () => {
+    try {
+      const data = await masterDataService.getAllMasterData();
+      const club = data.find(item => item.category === 'club_name' && item.is_active);
+      if (club) setClubName(club.value);
+    } catch (error) {
+      console.error('Failed to load club name:', error);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -102,7 +118,7 @@ const Login = ({ onLogin }) => {
           <div className="login-icon">
             <FaUsers />
           </div>
-          <h1>Investment Club</h1>
+          <h1>{clubName}</h1>
           <p>Welcome back! Please sign in to continue.</p>
         </div>
         

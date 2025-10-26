@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useLoading from '../hooks/useLoading';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { formatDateDisplay } from '../utils/dateUtils';
 import './Transactions.css';
 
 const Transactions = ({ payments }) => {
@@ -150,7 +151,7 @@ const Transactions = ({ payments }) => {
                       <td>{transaction.memberName || 'Unknown'}</td>
                       <td>{transaction.amount ? transaction.amount.toFixed(2) : '0.00'}</td>
                       <td>{transaction.description || transaction.paymentMonth || 'N/A'}</td>
-                      <td>{transaction.payment_date || transaction.paymentDate || 'N/A'}</td>
+                      <td>{transaction.payment_date ? formatDateDisplay(transaction.payment_date) : (transaction.paymentDate ? formatDateDisplay(transaction.paymentDate) : 'N/A')}</td>
                       <td>{transaction.payment_method || transaction.paymentMethod || 'N/A'}</td>
                       <td>{transaction.cashier_name || transaction.cashierName || 'N/A'}</td>
                       <td>

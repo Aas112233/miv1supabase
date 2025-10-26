@@ -165,6 +165,21 @@ class UserService {
       throw error;
     }
   }
+
+  async deleteUser(userId) {
+    try {
+      // Delete user profile first
+      await this.deleteUserProfile(userId);
+      
+      // Note: Deleting from auth.users requires admin privileges
+      // This should be handled by Supabase RLS policies or admin API
+      // For now, we just delete the profile
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      throw error;
+    }
+  }
 }
 
 const userService = new UserService();

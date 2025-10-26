@@ -9,6 +9,7 @@ import './UserManagement.css';
 const UserManagement = ({ currentUser }) => {
   const [showAccessModal, setShowAccessModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userPermissions, setUserPermissions] = useState({});
@@ -16,9 +17,12 @@ const UserManagement = ({ currentUser }) => {
   const [authorizedUsers, setAuthorizedUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'member' });
+  const [editFormData, setEditFormData] = useState({ name: '', email: '', role: 'member' });
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const { addToast } = useToast();
+
+  const hasManagePermission = currentUser?.permissions?.profile?.manage || currentUser?.role === 'admin';
 
   const isAdmin = currentUser && currentUser.role === 'admin';
 
@@ -52,6 +56,7 @@ const UserManagement = ({ currentUser }) => {
       reports: { read: true, write: false, manage: false },
       dividends: { read: true, write: false, manage: false },
       budget: { read: true, write: false, manage: false },
+      master_data: { read: true, write: false, manage: false },
       settings: { read: true, write: false, manage: false },
       profile: { read: true, write: false, manage: false }
     };
@@ -133,9 +138,68 @@ const UserManagement = ({ currentUser }) => {
     setUserRole('');
   };
 
+  const handleEditUser = (user) => {
+    if (!hasManagePermission) {
+      addToast('You do not have permission to edit users', 'error');
+      return;
+    }
+    setSelectedUser(user);
+    setEditFormData({ name: user.name, email: user.email, role: user.role || 'member' });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateUser = async (e) => {
+    e.preventDefault();
+    if (!hasManagePermission) return;
+
+    try {
+      setLoading(true);
+      await userService.updateUserProfile(selectedUser.id, {
+        name: editFormData.name,
+        role: editFormData.role
+      });
+
+      const users = await userService.getAllUsers();
+      setAuthorizedUsers(users || []);
+      setShowEditModal(false);
+      setEditFormData({ name: '', email: '', role: 'member' });
+      addToast('User updated successfully!', 'success');
+    } catch (error) {
+      addToast(getUserFriendlyError(error), 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (user) => {
+    if (!hasManagePermission) {
+      addToast('You do not have permission to delete users', 'error');
+      return;
+    }
+
+    if (user.id === currentUser.id) {
+      addToast('You cannot delete your own account', 'error');
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to delete user "${user.name}"? This action cannot be undone.`)) {
+      try {
+        setLoading(true);
+        await userService.deleteUser(user.id);
+        const users = await userService.getAllUsers();
+        setAuthorizedUsers(users || []);
+        addToast('User deleted successfully!', 'success');
+      } catch (error) {
+        addToast(getUserFriendlyError(error), 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   const handleCreateUser = async (e) => {
     e.preventDefault();
-    if (!isAdmin) return;
+    if (!hasManagePermission) return;
 
     if (formData.password.length < 6) {
       addToast('Password must be at least 6 characters', 'error');
@@ -209,6 +273,7 @@ const UserManagement = ({ currentUser }) => {
     { id: 'reports', name: 'Reports' },
     { id: 'dividends', name: 'Dividends' },
     { id: 'budget', name: 'Budget' },
+    { id: 'master_data', name: 'Master Data' },
     { id: 'settings', name: 'Settings' },
     { id: 'profile', name: 'User Management' }
   ];
@@ -236,7 +301,7 @@ const UserManagement = ({ currentUser }) => {
       <div className="users-list">
         <div className="users-header">
           <h2>Authorized Users ({authorizedUsers.length})</h2>
-          {isAdmin && (
+          {hasManagePermission && (
             <button className="btn btn--primary" onClick={() => setShowCreateModal(true)}>
               + Create User
             </button>
@@ -282,18 +347,33 @@ const UserManagement = ({ currentUser }) => {
                           onClick={() => handleManageAccess(user)}
                           disabled={!isAdmin}
                         >
-                          Manage Role
+                          Manage Access
                         </button>
-                        {isAdmin && (
-                          <button 
-                            className="btn btn--secondary btn--sm"
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setShowCredentialsModal(true);
-                            }}
-                          >
-                            Change Password
-                          </button>
+                        {hasManagePermission && (
+                          <>
+                            <button 
+                              className="btn btn--secondary btn--sm"
+                              onClick={() => handleEditUser(user)}
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              className="btn btn--secondary btn--sm"
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setShowCredentialsModal(true);
+                              }}
+                            >
+                              Change Password
+                            </button>
+                            <button 
+                              className="btn btn--danger btn--sm"
+                              onClick={() => handleDeleteUser(user)}
+                              disabled={user.id === currentUser.id}
+                            >
+                              Delete
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -312,8 +392,56 @@ const UserManagement = ({ currentUser }) => {
         )}
       </div>
       
+      {/* Edit User Modal */}
+      {showEditModal && selectedUser && hasManagePermission && (
+        <div className="overlay">
+          <div className="overlay-content" style={{ maxWidth: '500px' }}>
+            <div className="overlay-header">
+              <h2>Edit User</h2>
+              <button className="close-btn" onClick={() => setShowEditModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleUpdateUser} style={{ padding: '25px' }}>
+              <div className="form-group">
+                <label>Name *</label>
+                <input
+                  type="text"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={editFormData.email}
+                  disabled
+                  style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                />
+                <small style={{ color: '#6c757d' }}>Email cannot be changed</small>
+              </div>
+              <div className="form-group">
+                <label>Role *</label>
+                <select
+                  className="role-select"
+                  value={editFormData.role}
+                  onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="form-actions">
+                <button type="button" className="btn btn--secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn--primary" disabled={loading}>Update User</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Create User Modal */}
-      {showCreateModal && isAdmin && (
+      {showCreateModal && hasManagePermission && (
         <div className="overlay">
           <div className="overlay-content" style={{ maxWidth: '500px' }}>
             <div className="overlay-header">
@@ -370,7 +498,7 @@ const UserManagement = ({ currentUser }) => {
       )}
 
       {/* Change Credentials Modal */}
-      {showCredentialsModal && selectedUser && isAdmin && (
+      {showCredentialsModal && selectedUser && hasManagePermission && (
         <div className="overlay">
           <div className="overlay-content" style={{ maxWidth: '500px' }}>
             <div className="overlay-header">

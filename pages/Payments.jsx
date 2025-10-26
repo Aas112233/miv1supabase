@@ -4,6 +4,7 @@ import useLoading from '../hooks/useLoading';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { hasWritePermission } from '../components/PermissionChecker';
 import paymentsService from '../api/paymentsService';
+import masterDataService from '../api/masterDataService';
 import { getUserFriendlyError } from '../src/utils/errorHandler';
 import './Payments.css';
 
@@ -20,10 +21,30 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
   const [cashierName, setCashierName] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [cashierNames, setCashierNames] = useState([]);
+  const [paymentMethods, setPaymentMethods] = useState([]);
   const autocompleteRef = useRef(null);
   
   const { addToast } = useToast();
   const { startLoading, stopLoading, isLoading } = useLoading();
+
+  useEffect(() => {
+    loadMasterData();
+  }, []);
+
+  const loadMasterData = async () => {
+    try {
+      const data = await masterDataService.getAllMasterData();
+      const activeCashiers = data.filter(item => item.category === 'cashier_name' && item.is_active)
+        .sort((a, b) => a.display_order - b.display_order);
+      const activeMethods = data.filter(item => item.category === 'payment_method' && item.is_active)
+        .sort((a, b) => a.display_order - b.display_order);
+      setCashierNames(activeCashiers);
+      setPaymentMethods(activeMethods);
+    } catch (error) {
+      console.error('Failed to load master data:', error);
+    }
+  };
 
   const handleMemberChange = (e) => {
     const selectedMemberId = e.target.value;
@@ -496,22 +517,28 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                       onChange={(e) => setPaymentMethod(e.target.value)}
                     >
                       <option value="">Select payment method</option>
-                      <option value="Cash">Cash</option>
-                      <option value="Bank Transfer">Bank Transfer</option>
-                      <option value="Mobile Banking">Mobile Banking</option>
-                      <option value="Check">Check</option>
+                      {paymentMethods.map((method) => (
+                        <option key={method.id} value={method.value}>
+                          {method.value}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   
                   <div className="form-group">
                     <label htmlFor="cashierName">Cashier Name *</label>
-                    <input
-                      type="text"
+                    <select
                       id="cashierName"
                       value={cashierName}
                       onChange={(e) => setCashierName(e.target.value)}
-                      placeholder="Enter cashier name"
-                    />
+                    >
+                      <option value="">Select cashier</option>
+                      {cashierNames.map((cashier) => (
+                        <option key={cashier.id} value={cashier.value}>
+                          {cashier.value}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -623,22 +650,28 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                       onChange={(e) => setPaymentMethod(e.target.value)}
                     >
                       <option value="">Select payment method</option>
-                      <option value="Cash">Cash</option>
-                      <option value="Bank Transfer">Bank Transfer</option>
-                      <option value="Mobile Banking">Mobile Banking</option>
-                      <option value="Check">Check</option>
+                      {paymentMethods.map((method) => (
+                        <option key={method.id} value={method.value}>
+                          {method.value}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   
                   <div className="form-group">
                     <label htmlFor="editCashierName">Cashier Name *</label>
-                    <input
-                      type="text"
+                    <select
                       id="editCashierName"
                       value={cashierName}
                       onChange={(e) => setCashierName(e.target.value)}
-                      placeholder="Enter cashier name"
-                    />
+                    >
+                      <option value="">Select cashier</option>
+                      {cashierNames.map((cashier) => (
+                        <option key={cashier.id} value={cashier.value}>
+                          {cashier.value}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>

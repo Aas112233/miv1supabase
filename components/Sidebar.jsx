@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useLanguage } from '../contexts/LanguageContext';
+import masterDataService from '../api/masterDataService';
 import { 
   FaChartBar, 
   FaUsers, 
@@ -26,6 +27,21 @@ const Sidebar = ({ currentUser, onLogout }) => {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useLocalStorage('sidebarCollapsed', false);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [clubName, setClubName] = useState('Investment Club');
+
+  useEffect(() => {
+    loadClubName();
+  }, []);
+
+  const loadClubName = async () => {
+    try {
+      const data = await masterDataService.getAllMasterData();
+      const club = data.find(item => item.category === 'club_name' && item.is_active);
+      if (club) setClubName(club.value);
+    } catch (error) {
+      console.error('Failed to load club name:', error);
+    }
+  };
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -38,7 +54,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
   return (
     <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
-        {!isCollapsed && <h2>Investment Club</h2>}
+        {!isCollapsed && <h2>{clubName}</h2>}
         <button className="sidebar-toggle" onClick={toggleSidebar}>
           <FaBars />
         </button>

@@ -141,7 +141,7 @@ body.theme-dark .stat-info p {
 
 .dashboard-charts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
   gap: 25px;
   margin-bottom: 30px;
 }
@@ -281,6 +281,16 @@ body.theme-dark .no-payments {
 }
 
 /* Responsive styles */
+@media (min-width: 1400px) {
+  .dashboard-charts {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .chart-wrapper {
+    height: 400px;
+  }
+}
+
 @media (max-width: 1200px) {
   .dashboard-charts {
     grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
@@ -293,7 +303,7 @@ body.theme-dark .no-payments {
   }
   
   .chart-wrapper {
-    height: 300px;
+    height: 350px;
   }
 }
 

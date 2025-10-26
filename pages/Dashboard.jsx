@@ -52,8 +52,13 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
   const savingsGrowthData = useMemo(() => {
     if (!payments.length) return [];
     
+    // Filter out payments with invalid dates
+    const validPayments = payments.filter(payment => 
+      payment.paymentDate && !isNaN(new Date(payment.paymentDate))
+    );
+    
     // Sort payments by date
-    const sortedPayments = [...payments].sort((a, b) => 
+    const sortedPayments = [...validPayments].sort((a, b) => 
       new Date(a.paymentDate) - new Date(b.paymentDate)
     );
     
@@ -75,7 +80,8 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     // Group payments by month
     const monthlyData = {};
     payments.forEach(payment => {
-      if (!payment.paymentDate) return;
+      // Check if payment has a valid date
+      if (!payment.paymentDate || isNaN(new Date(payment.paymentDate))) return;
       
       const date = new Date(payment.paymentDate);
       const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -89,6 +95,9 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     
     // Convert to array and sort by date
     return Object.values(monthlyData).sort((a, b) => {
+      // Handle case where month might be invalid
+      if (!a.month || !b.month) return 0;
+      
       // Extract year and month from the month string (e.g., "Jan 2025")
       const [aMonth, aYear] = a.month.split(' ');
       const [bMonth, bYear] = b.month.split(' ');
@@ -96,6 +105,9 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
       // Create date objects for comparison
       const dateA = new Date(`${aMonth} 1, ${aYear}`);
       const dateB = new Date(`${bMonth} 1, ${bYear}`);
+      
+      // Check if dates are valid
+      if (isNaN(dateA) || isNaN(dateB)) return 0;
       
       return dateA - dateB;
     });
@@ -108,12 +120,13 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     // Calculate total contributions per member
     const memberContributions = {};
     payments.forEach(payment => {
+      // Check if payment has required data
       if (!payment.memberId || !payment.amount) return;
       
       if (!memberContributions[payment.memberId]) {
         const member = members.find(m => m.id === payment.memberId);
         memberContributions[payment.memberId] = {
-          name: member ? member.name : 'Unknown',
+          name: member && member.name ? member.name : 'Unknown',
           amount: 0
         };
       }
@@ -122,6 +135,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     
     // Convert to array and sort by amount (descending)
     return Object.values(memberContributions)
+      .filter(item => item.name) // Filter out items with invalid names
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 10); // Show top 10 contributors
   }, [payments, members]);
@@ -131,6 +145,9 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     if (!projects.length) return [];
     
     return projects.map(project => {
+      // Validate project data
+      if (!project.name) return null;
+      
       const revenue = project.total_revenue || 0;
       const investment = project.initial_investment || 0;
       const profit = revenue - investment;
@@ -141,7 +158,9 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
         investment: parseFloat(investment.toFixed(2)),
         profit: parseFloat(profit.toFixed(2))
       };
-    }).sort((a, b) => b.profit - a.profit) // Sort by profit (descending)
+    })
+    .filter(item => item !== null) // Remove invalid projects
+    .sort((a, b) => b.profit - a.profit) // Sort by profit (descending)
     .slice(0, 10); // Show top 10 projects
   }, [projects]);
 
@@ -152,7 +171,8 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     // Group payments by month
     const monthlyData = {};
     payments.forEach(payment => {
-      if (!payment.paymentDate || !payment.amount) return;
+      // Check if payment has a valid date
+      if (!payment.paymentDate || isNaN(new Date(payment.paymentDate)) || !payment.amount) return;
       
       const date = new Date(payment.paymentDate);
       const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -171,6 +191,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     
     // Convert to array, sort by amount (descending), and take top 10
     return Object.values(monthlyData)
+      .filter(item => item.month) // Filter out items with invalid month names
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 10);
   }, [payments]);
@@ -286,6 +307,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                       dataKey="date" 
                       tick={{ fontSize: 12 }}
                       tickFormatter={(value) => {
+                        if (!value || isNaN(new Date(value))) return 'Invalid Date';
                         const date = new Date(value);
                         return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
                       }}
@@ -456,11 +478,18 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
             <h3>Recent Payments</h3>
             {payments.length > 0 ? (
               <div className="recent-payments">
-                {payments.slice(0, 5).map((payment) => (
+                {payments
+                  .filter(payment => payment) // Filter out null/undefined payments
+                  .slice(0, 5)
+                  .map((payment) => (
                   <div className="payment-item" key={payment.id}>
                     <div className="payment-member">{payment.memberName || 'Unknown Member'}</div>
                     <div className="payment-amount">৳{(payment.amount || 0).toFixed(2)}</div>
-                    <div className="payment-date">{payment.paymentDate || 'Unknown Date'}</div>
+                    <div className="payment-date">
+                      {payment.paymentDate && !isNaN(new Date(payment.paymentDate)) 
+                        ? new Date(payment.paymentDate).toLocaleDateString() 
+                        : 'Invalid Date'}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -1,6 +1,6 @@
 # Investment Club Accounting System
 
-A comprehensive web application for managing investment club finances with Google Sheets as the backend database.
+A comprehensive web application for managing investment club finances with Supabase as the backend.
 
 ## Features
 
@@ -12,54 +12,86 @@ A comprehensive web application for managing investment club finances with Googl
 - User authentication and authorization
 - Responsive design for desktop and mobile
 - Dark/light theme support
+- Multi-language support (English, Bengali)
+- Role-based access control
+- Audit logging
+- Project investment tracking
 
 ## Technology Stack
 
 - **Frontend**: React 18+, React Router, Recharts for data visualization
-- **UI Components**: Custom CSS with responsive design
+- **UI Components**: Custom CSS with responsive design and react-icons
 - **State Management**: React Context API
-- **Backend**: Google Sheets with Google Apps Script REST API
-- **Authentication**: JWT-based authentication system
+- **Backend**: Supabase (PostgreSQL, Authentication, Storage)
+- **Authentication**: Supabase Auth with Row Level Security
 - **Build Tool**: Vite
 
 ## Prerequisites
 
 - Node.js (v14 or higher)
 - npm or yarn
-- A Google account for the Sheets backend
+- Supabase account (or local instance with Docker)
 
 ## Installation
 
 1. Clone the repository:
-   \\\ash
+   ```bash
    git clone <repository-url>
-   \\\
+   ```
 
 2. Install dependencies:
-   \\\ash
+   ```bash
    npm install
-   \\\
+   ```
 
-3. Start the development server:
-   \\\ash
+3. Set up environment variables:
+   Create a `.env` file in the root directory with your Supabase credentials:
+   ```
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+4. Start the development server:
+   ```bash
    npm run dev
-   \\\
+   ```
 
-4. Build for production:
-   \\\ash
+5. Build for production:
+   ```bash
    npm run build
-   \\\
+   ```
 
-## Google Sheets Backend Setup
+## Project Structure
 
-1. Create a Google Sheet with the required structure
-2. Deploy the Google Apps Script code as a web app
-3. Configure the web app URL in \src/config/apiConfig.js\
+- `/api` - Service files for interacting with Supabase backend
+- `/components` - Reusable React components
+- `/config` - Configuration files
+- `/contexts` - React context providers
+- `/docs` - Documentation files
+- `/hooks` - Custom React hooks
+- `/locales` - Language translation files
+- `/pages` - Page components
+- `/scripts` - Utility scripts
+- `/sql` - Database schema and migration files
+- `/src` - Main source files
+- `/supabase` - Supabase configuration and local development setup
+
+## Supabase Setup
+
+1. Create a Supabase project at https://app.supabase.io/
+2. Configure your database schema using the files in the `/sql` directory
+3. Set up authentication and configure Row Level Security (RLS) policies
+4. Add your Supabase credentials to the `.env` file
+
+For local development with Supabase:
+1. Install the Supabase CLI
+2. Run `supabase start` in the `/supabase` directory
 
 ## Deployment
 
-The application can be deployed to any static hosting service (Netlify, Vercel, GitHub Pages, etc.) after building with \
-pm run build\.
+The application can be deployed to any static hosting service (Netlify, Vercel, GitHub Pages, etc.) after building with `npm run build`.
+
+You will also need to deploy your Supabase backend separately.
 
 ## License
 

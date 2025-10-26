@@ -1,24 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import userService from '../api/userService';
+import authService from '../api/authService';
+import permissionsService from '../api/permissionsService';
 import { useToast } from '../contexts/ToastContext';
+import { getUserFriendlyError } from '../src/utils/errorHandler';
 import './UserManagement.css';
 
-const UserManagement = ({ members, setMembers, currentUser }) => {
+const UserManagement = ({ currentUser }) => {
   const [showAccessModal, setShowAccessModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userPermissions, setUserPermissions] = useState({});
   const [userRole, setUserRole] = useState('');
   const [authorizedUsers, setAuthorizedUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'member' });
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const { addToast } = useToast();
 
-  // Check if current user is admin
   const isAdmin = currentUser && currentUser.role === 'admin';
 
-  // Filter members to show only authorized users (those with user_id)
+  // Fetch authorized users from user_profiles table
   useEffect(() => {
-    const filteredUsers = members.filter(member => member.user_id);
-    setAuthorizedUsers(filteredUsers);
-  }, [members]);
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const users = await userService.getAllUsers();
+        setAuthorizedUsers(users || []);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        addToast(getUserFriendlyError(error), 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   // Initialize permissions for each user if not already done
   const initializePermissions = (user) => {
@@ -26,6 +45,8 @@ const UserManagement = ({ members, setMembers, currentUser }) => {
       dashboard: { read: true, write: false, manage: false },
       members: { read: true, write: false, manage: false },
       payments: { read: true, write: false, manage: false },
+      expenses: { read: true, write: false, manage: false },
+      projects: { read: true, write: false, manage: false },
       transactions: { read: true, write: false, manage: false },
       requests: { read: true, write: false, manage: false },
       reports: { read: true, write: false, manage: false },
@@ -41,15 +62,15 @@ const UserManagement = ({ members, setMembers, currentUser }) => {
     return { ...defaultPermissions, ...user.permissions };
   };
 
-  const handleManageAccess = (user) => {
-    // Only admins can open the permission management modal
-    if (!isAdmin) {
-      return;
-    }
+  const handleManageAccess = async (user) => {
+    if (!isAdmin) return;
     
     setSelectedUser(user);
-    setUserPermissions(initializePermissions(user));
     setUserRole(user.role || 'member');
+    
+    // Fetch permissions from database
+    const perms = await permissionsService.getUserPermissions(user.id);
+    setUserPermissions(Object.keys(perms).length > 0 ? perms : initializePermissions(user));
     setShowAccessModal(true);
   };
 
@@ -62,8 +83,8 @@ const UserManagement = ({ members, setMembers, currentUser }) => {
     setUserPermissions(prev => ({
       ...prev,
       [screen]: {
-        ...prev[screen],
-        [permissionType]: !prev[screen][permissionType]
+        ...(prev[screen] || { read: false, write: false, manage: false }),
+        [permissionType]: !(prev[screen]?.[permissionType] ?? false)
       }
     }));
   };
@@ -78,40 +99,30 @@ const UserManagement = ({ members, setMembers, currentUser }) => {
   };
 
   const handleSavePermissions = async () => {
-    // Only admins can save permissions
-    if (!isAdmin) {
-      return;
-    }
+    if (!isAdmin) return;
     
     try {
-      // Update the user's role in the user_profiles table
-      // Only if the member has a valid user_id (UUID from auth)
-      if (selectedUser.user_id) {
-        // Update the user profile with the new role
-        await userService.updateUserProfile(selectedUser.user_id, {
-          role: userRole
-        });
-      } else {
-        // If we don't have a valid user_id, we can't update the user profile
-        addToast('Cannot update role: User profile not linked to this member', 'warning');
-      }
+      setLoading(true);
+      // Save role
+      await userService.updateUserRole(selectedUser.id, userRole);
       
-      // Update the user's permissions in the members list
-      const updatedMembers = members.map(member => 
-        member.id === selectedUser.id 
-          ? { ...member, permissions: userPermissions, role: userRole } 
-          : member
+      // Save permissions to database
+      await permissionsService.saveUserPermissions(selectedUser.id, userPermissions);
+      
+      const updatedUsers = authorizedUsers.map(user => 
+        user.id === selectedUser.id 
+          ? { ...user, role: userRole } 
+          : user
       );
-      setMembers(updatedMembers);
-      
-      // Update selected user state
-      setSelectedUser({ ...selectedUser, permissions: userPermissions, role: userRole });
+      setAuthorizedUsers(updatedUsers);
       setShowAccessModal(false);
       
       addToast('User permissions updated successfully!', 'success');
     } catch (error) {
       console.error('Error saving permissions:', error);
-      addToast('Error updating user permissions: ' + error.message, 'error');
+      addToast(getUserFriendlyError(error), 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -122,11 +133,77 @@ const UserManagement = ({ members, setMembers, currentUser }) => {
     setUserRole('');
   };
 
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+
+    if (formData.password.length < 6) {
+      addToast('Password must be at least 6 characters', 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await authService.signup(formData.email, formData.password, { name: formData.name });
+      
+      if (response.user) {
+        await userService.createUserProfile({
+          id: response.user.id,
+          email: formData.email,
+          name: formData.name,
+          role: formData.role
+        });
+
+        const users = await userService.getAllUsers();
+        setAuthorizedUsers(users || []);
+        setShowCreateModal(false);
+        setFormData({ name: '', email: '', password: '', role: 'member' });
+        addToast('User created successfully!', 'success');
+      }
+    } catch (error) {
+      addToast(getUserFriendlyError(error), 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangeCredentials = async (e) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+
+    if (newPassword !== confirmPassword) {
+      addToast('Passwords do not match', 'error');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      addToast('Password must be at least 6 characters', 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Note: Supabase requires admin API to change other users' passwords
+      // For now, we'll show a message that user needs to reset via email
+      await authService.resetPassword(selectedUser.email);
+      setShowCredentialsModal(false);
+      setNewPassword('');
+      setConfirmPassword('');
+      addToast('Password reset email sent to user', 'success');
+    } catch (error) {
+      addToast(getUserFriendlyError(error), 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Define available screens
   const screens = [
     { id: 'dashboard', name: 'Dashboard' },
     { id: 'members', name: 'Members' },
     { id: 'payments', name: 'Payments' },
+    { id: 'expenses', name: 'Expenses' },
+    { id: 'projects', name: 'Projects' },
     { id: 'transactions', name: 'Transactions' },
     { id: 'requests', name: 'Transaction Requests' },
     { id: 'reports', name: 'Reports' },
@@ -151,60 +228,166 @@ const UserManagement = ({ members, setMembers, currentUser }) => {
 
   return (
     <div className="user-management">
-      <h1>User Management</h1>
+      <div className="user-management-header">
+        <h1>User Management</h1>
+        <p className="subtitle">Manage user roles and permissions</p>
+      </div>
       
       <div className="users-list">
         <div className="users-header">
-          <h2>Authorized Users</h2>
+          <h2>Authorized Users ({authorizedUsers.length})</h2>
+          {isAdmin && (
+            <button className="btn btn--primary" onClick={() => setShowCreateModal(true)}>
+              + Create User
+            </button>
+          )}
         </div>
         
-        <div className="users-table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Contact</th>
-                <th>Role</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {authorizedUsers.map((member) => (
-                <tr key={member.id}>
-                  <td>{member.id}</td>
-                  <td>{member.name}</td>
-                  <td>{member.email || (member.contact && member.contact.includes('@')) ? member.contact : 'N/A'}</td>
-                  <td>{member.contact}</td>
-                  <td>
-                    <span className={`role-badge ${member.role || 'member'}`}>
-                      {member.role || 'member'}
-                    </span>
-                  </td>
-                  <td>
-                    <button 
-                      className="btn btn--primary"
-                      onClick={() => handleManageAccess(member)}
-                      disabled={!isAdmin}
-                    >
-                      {isAdmin ? 'Manage Access' : 'View Permissions'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {authorizedUsers.length === 0 && (
+        {loading ? (
+          <div className="loading-container">
+            <p>Loading users...</p>
+          </div>
+        ) : (
+          <div className="users-table-container">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <td colSpan="6" className="no-data">
-                    No authorized users found
-                  </td>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Last Login</th>
+                  <th>Actions</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {authorizedUsers.map((user) => (
+                  <tr key={user.id}>
+                    <td>
+                      <div className="user-info">
+                        <div className="user-avatar">{user.name?.charAt(0).toUpperCase()}</div>
+                        <span>{user.name}</span>
+                      </div>
+                    </td>
+                    <td>{user.email}</td>
+                    <td>
+                      <span className={`role-badge role-badge--${user.role || 'member'}`}>
+                        {(user.role || 'member').toUpperCase()}
+                      </span>
+                    </td>
+                    <td>{user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</td>
+                    <td>
+                      <div className="action-buttons">
+                        <button 
+                          className="btn btn--secondary btn--sm"
+                          onClick={() => handleManageAccess(user)}
+                          disabled={!isAdmin}
+                        >
+                          Manage Role
+                        </button>
+                        {isAdmin && (
+                          <button 
+                            className="btn btn--secondary btn--sm"
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowCredentialsModal(true);
+                            }}
+                          >
+                            Change Password
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {authorizedUsers.length === 0 && (
+                  <tr>
+                    <td colSpan="5" className="no-data">
+                      No authorized users found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
       
+      {/* Create User Modal */}
+      {showCreateModal && isAdmin && (
+        <div className="overlay">
+          <div className="overlay-content" style={{ maxWidth: '500px' }}>
+            <div className="overlay-header">
+              <h2>Create New User</h2>
+              <button className="close-btn" onClick={() => setShowCreateModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleCreateUser} style={{ padding: '25px' }}>
+              <div className="form-group">
+                <label>Name *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Email *</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Password *</label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                  minLength="6"
+                />
+              </div>
+              <div className="form-group">
+                <label>Role *</label>
+                <select
+                  className="role-select"
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="form-actions">
+                <button type="button" className="btn btn--secondary" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn--primary" disabled={loading}>Create User</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Change Credentials Modal */}
+      {showCredentialsModal && selectedUser && isAdmin && (
+        <div className="overlay">
+          <div className="overlay-content" style={{ maxWidth: '500px' }}>
+            <div className="overlay-header">
+              <h2>Change Password for {selectedUser.name}</h2>
+              <button className="close-btn" onClick={() => setShowCredentialsModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleChangeCredentials} style={{ padding: '25px' }}>
+              <p style={{ marginBottom: '20px', color: '#6c757d' }}>A password reset link will be sent to {selectedUser.email}</p>
+              <div className="form-actions">
+                <button type="button" className="btn btn--secondary" onClick={() => setShowCredentialsModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn--primary" disabled={loading}>Send Reset Link</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Access Management Modal - Only shown to admins */}
       {showAccessModal && selectedUser && isAdmin && (
         <div className="overlay">
@@ -254,7 +437,7 @@ const UserManagement = ({ members, setMembers, currentUser }) => {
                       <input
                         type="checkbox"
                         id={`${screen.id}-${type.id}`}
-                        checked={userPermissions[screen.id]?.[type.id] || false}
+                        checked={userPermissions[screen.id]?.[type.id] ?? false}
                         onChange={() => handlePermissionChange(screen.id, type.id)}
                         disabled={!isAdmin}
                       />

@@ -252,7 +252,14 @@ body.theme-dark .data-table td {
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: inherit;
+}
+
+body.theme-light .data-table th {
+  color: #212529;
+}
+
+body.theme-dark .data-table th {
+  color: #e9ecef;
 }
 
 .no-report {

@@ -4,11 +4,25 @@
   margin: 0 auto;
 }
 
-.user-management h1 {
-  margin: 0 0 25px 0;
+.user-management-header {
+  margin-bottom: 30px;
+}
+
+.user-management-header h1 {
+  margin: 0 0 8px 0;
   color: inherit;
   font-size: 1.8rem;
   font-weight: 700;
+}
+
+.user-management-header .subtitle {
+  margin: 0;
+  color: #6c757d;
+  font-size: 1rem;
+}
+
+body.theme-dark .user-management-header .subtitle {
+  color: #b0b0b0;
 }
 
 .users-list {
@@ -19,6 +33,16 @@
   width: 100%;
 }
 
+.loading-container {
+  padding: 40px;
+  text-align: center;
+  color: #6c757d;
+}
+
+body.theme-dark .loading-container {
+  color: #b0b0b0;
+}
+
 body.theme-light .users-list {
   background: #ffffff;
   border: 1px solid #e9ecef;
@@ -26,7 +50,7 @@ body.theme-light .users-list {
 
 body.theme-dark .users-list {
   background: #1e1e1e;
-  border: 1px solid #343a40;
+  border: 2px solid #343a40;
 }
 
 .users-header {
@@ -35,6 +59,7 @@ body.theme-dark .users-list {
   align-items: center;
   padding: 20px;
   border-bottom: 1px solid;
+  gap: 15px;
 }
 
 body.theme-light .users-header {
@@ -69,7 +94,8 @@ body.theme-light .data-table thead {
 }
 
 body.theme-dark .data-table thead {
-  background-color: #2d2d2d;
+  background-color: #252525;
+  color: #e9ecef;
 }
 
 .data-table th,
@@ -106,26 +132,60 @@ body.theme-light .data-table tbody tr:hover {
 }
 
 body.theme-dark .data-table tbody tr:hover {
-  background-color: #2d2d2d;
+  background-color: #252525;
 }
 
 .role-badge {
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  display: inline-block;
 }
 
-.role-badge.admin {
-  background-color: rgba(220, 53, 69, 0.1);
+.role-badge--admin {
+  background-color: rgba(220, 53, 69, 0.15);
   color: #dc3545;
 }
 
-.role-badge.member {
-  background-color: rgba(108, 117, 125, 0.1);
-  color: #6c757d;
+.role-badge--member {
+  background-color: rgba(0, 123, 255, 0.15);
+  color: #007bff;
+}
+
+body.theme-dark .role-badge--admin {
+  background-color: rgba(220, 53, 69, 0.25);
+  color: #ff6b6b;
+}
+
+body.theme-dark .role-badge--member {
+  background-color: rgba(100, 181, 246, 0.25);
+  color: #64b5f6;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #007bff, #00bcd4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+body.theme-dark .user-avatar {
+  background: linear-gradient(135deg, #1976d2, #0097a7);
 }
 
 /* Overlay styles */
@@ -159,6 +219,7 @@ body.theme-light .overlay-content {
 
 body.theme-dark .overlay-content {
   background-color: #1e1e1e;
+  border: 2px solid #343a40;
 }
 
 .overlay-header {
@@ -195,7 +256,7 @@ body.theme-light .close-btn {
 }
 
 body.theme-dark .close-btn {
-  color: #95a5a6;
+  color: #b0b0b0;
 }
 
 .close-btn:hover {
@@ -286,8 +347,9 @@ body.theme-light .permissions-header {
 }
 
 body.theme-dark .permissions-header {
-  background-color: #2d2d2d;
+  background-color: #252525;
   border-bottom-color: #343a40;
+  color: #e9ecef;
 }
 
 .permissions-row {
@@ -369,6 +431,18 @@ body.theme-dark .form-actions {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  white-space: nowrap;
+}
+
+.btn--sm {
+  padding: 8px 16px;
+  font-size: 0.875rem;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .btn:hover {
@@ -382,22 +456,27 @@ body.theme-dark .form-actions {
 
 .btn--primary {
   color: white;
+  background-color: var(--primary-color) !important;
+}
+
+.btn--primary:hover {
+  background-color: var(--primary-hover) !important;
 }
 
 body.theme-light .btn--primary {
-  background-color: #007bff;
+  background-color: var(--primary-color) !important;
 }
 
 body.theme-light .btn--primary:hover {
-  background-color: #0069d9;
+  background-color: var(--primary-hover) !important;
 }
 
 body.theme-dark .btn--primary {
-  background-color: #1976d2;
+  background-color: var(--primary-color) !important;
 }
 
 body.theme-dark .btn--primary:hover {
-  background-color: #1565c0;
+  background-color: var(--primary-hover) !important;
 }
 
 .btn--secondary {
@@ -419,6 +498,42 @@ body.theme-dark .btn--secondary {
 
 body.theme-dark .btn--secondary:hover {
   background-color: #343a40;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+}
+
+body.theme-light .form-group input,
+body.theme-light .form-group select {
+  background-color: #ffffff;
+  color: #212529;
+  border-color: #ced4da;
+}
+
+body.theme-dark .form-group input,
+body.theme-dark .form-group select {
+  background-color: #2d2d2d;
+  color: #e9ecef;
+  border-color: #495057;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: 0;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+body.theme-dark .form-group input:focus,
+body.theme-dark .form-group select:focus {
+  border-color: #1976d2;
 }
 
 /* Responsive adjustments */

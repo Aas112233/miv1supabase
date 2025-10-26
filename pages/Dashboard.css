@@ -71,6 +71,14 @@ body.theme-dark .stat-card {
   background-color: #007bff;
 }
 
+.stat-icon--expenses {
+  background-color: #dc3545;
+}
+
+.stat-icon--projects {
+  background-color: #17a2b8;
+}
+
 .stat-info h3 {
   margin: 0 0 5px 0;
   font-size: 1.8rem;

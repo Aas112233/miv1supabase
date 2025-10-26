@@ -73,11 +73,9 @@ class UserService {
 
   async ensureUserProfileExists(user) {
     try {
-      // Check if profile already exists
       const existingProfile = await this.getUserProfile(user.id);
       
       if (!existingProfile) {
-        // Create new profile
         const profileData = {
           id: user.id,
           email: user.email,
@@ -96,6 +94,51 @@ class UserService {
     }
   }
 
+  async updateLastLogin(userId) {
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', userId);
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating last login:', error);
+    }
+  }
+
+  async getAllUsers() {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      return [];
+    }
+  }
+
+  async updateUserRole(userId, role) {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update({ role })
+        .eq('id', userId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      throw error;
+    }
+  }
+
   // Get user role directly from auth.users table
   async getUserRoleFromAuth(userId) {
     try {
@@ -106,6 +149,20 @@ class UserService {
     } catch (error) {
       console.error('Error getting user role from auth:', error);
       return 'member';
+    }
+  }
+
+  async deleteUserProfile(userId) {
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('id', userId);
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error deleting user profile:', error);
+      throw error;
     }
   }
 }

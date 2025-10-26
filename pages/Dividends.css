@@ -213,8 +213,17 @@
 }
 
 .data-table th {
-  background-color: #e9ecef;
   font-weight: 600;
+}
+
+body.theme-light .data-table th {
+  background-color: #e9ecef;
+  color: #212529;
+}
+
+body.theme-dark .data-table th {
+  background-color: #2d2d2d;
+  color: #e9ecef;
 }
 
 .data-table tbody tr:hover {

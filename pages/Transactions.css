@@ -153,6 +153,14 @@ body.theme-dark .data-table td {
   letter-spacing: 0.5px;
 }
 
+body.theme-light .data-table th {
+  color: #212529;
+}
+
+body.theme-dark .data-table th {
+  color: #e9ecef;
+}
+
 .data-table th.sortable {
   cursor: pointer;
   user-select: none;

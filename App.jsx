@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ToastProvider } from './contexts/ToastContext';
+import ToastProvider from './ToastProvider';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
 import Payments from './pages/Payments';
+import Expenses from './pages/Expenses';
+import Projects from './pages/Projects';
 import Transactions from './pages/Transactions';
 import TransactionRequests from './pages/TransactionRequests';
 import Settings from './pages/Settings';
@@ -18,11 +20,16 @@ import ProtectedRoute from './components/ProtectedRoute';
 import NotAuthorized from './pages/NotAuthorized';
 import NotFound from './pages/NotFound';
 import Goals from './pages/Goals';
+import MasterData from './pages/MasterData';
 import authService from './api/authService';
 import membersService from './api/membersService';
 import paymentsService from './api/paymentsService';
+import expensesService from './api/expensesService';
+import projectsService from './api/projectsService';
 import transactionRequestsService from './api/transactionRequestsService';
 import auditService from './api/auditService';
+import userService from './api/userService';
+import permissionsService from './api/permissionsService';
 import { supabase } from './src/config/supabaseClient';
 
 import './App.css';
@@ -32,6 +39,8 @@ const App = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [members, setMembers] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [requests, setRequests] = useState([]);
   const [dividends, setDividends] = useState([]);
   const [goals, setGoals] = useState([]);
@@ -47,41 +56,42 @@ const App = () => {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // Check if there's an existing Supabase session
         const session = authService.getSession();
         const currentUser = await authService.getCurrentUser();
         
         if (session && currentUser) {
           setIsLoggedIn(true);
           
-          // Get user role from auth.users table
-          let role = 'member'; // default role
+          // Get user profile from database
+          const profile = await userService.ensureUserProfileExists(currentUser);
           
-          // Check if user is in the list of admins
-          if (currentUser.email === 'mhassantoha@gmail.com' || currentUser.email === 'admin@munshiinvestment.com') {
-            role = 'admin';
-          }
+          // Get user permissions from database
+          const permissions = await permissionsService.getUserPermissions(currentUser.id);
           
-          // Create user object
           const user = {
             id: currentUser.id,
-            name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+            name: profile?.name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
             email: currentUser.email,
-            role: role
+            role: profile?.role || 'member',
+            permissions: permissions
           };
           
           setCurrentUser(user);
           
-          // Fetch members, payments, and requests
+          // Fetch members, payments, expenses, projects, and requests
           try {
-            const [fetchedMembers, fetchedPayments, fetchedRequests] = await Promise.all([
+            const [fetchedMembers, fetchedPayments, fetchedExpenses, fetchedProjects, fetchedRequests] = await Promise.allSettled([
               membersService.getAllMembers(),
               paymentsService.getAllPayments(),
+              expensesService.getAllExpenses(),
+              projectsService.getAllProjects(),
               transactionRequestsService.getAllRequests()
             ]);
-            setMembers(fetchedMembers || []);
-            setPayments(fetchedPayments || []);
-            setRequests(fetchedRequests || []);
+            setMembers(fetchedMembers.status === 'fulfilled' ? fetchedMembers.value || [] : []);
+            setPayments(fetchedPayments.status === 'fulfilled' ? fetchedPayments.value || [] : []);
+            setExpenses(fetchedExpenses.status === 'fulfilled' ? fetchedExpenses.value || [] : []);
+            setProjects(fetchedProjects.status === 'fulfilled' ? fetchedProjects.value || [] : []);
+            setRequests(fetchedRequests.status === 'fulfilled' ? fetchedRequests.value || [] : []);
           } catch (error) {
             console.error('Failed to fetch data:', error);
           }
@@ -97,23 +107,34 @@ const App = () => {
   }, []);
 
   const handleLogin = async (user) => {
-    setIsLoggedIn(true);
-    setCurrentUser(user);
+    // Load permissions from database
+    const permissions = await permissionsService.getUserPermissions(user.id);
+    const userWithPermissions = { ...user, permissions };
     
-    // Fetch members, payments, and requests from Supabase after login
+    setIsLoggedIn(true);
+    setCurrentUser(userWithPermissions);
+    
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     try {
-      const [fetchedMembers, fetchedPayments, fetchedRequests] = await Promise.all([
+      const [fetchedMembers, fetchedPayments, fetchedExpenses, fetchedProjects, fetchedRequests] = await Promise.allSettled([
         membersService.getAllMembers(),
         paymentsService.getAllPayments(),
+        expensesService.getAllExpenses(),
+        projectsService.getAllProjects(),
         transactionRequestsService.getAllRequests()
       ]);
-      setMembers(fetchedMembers || []);
-      setPayments(fetchedPayments || []);
-      setRequests(fetchedRequests || []);
+      setMembers(fetchedMembers.status === 'fulfilled' ? fetchedMembers.value || [] : []);
+      setPayments(fetchedPayments.status === 'fulfilled' ? fetchedPayments.value || [] : []);
+      setExpenses(fetchedExpenses.status === 'fulfilled' ? fetchedExpenses.value || [] : []);
+      setProjects(fetchedProjects.status === 'fulfilled' ? fetchedProjects.value || [] : []);
+      setRequests(fetchedRequests.status === 'fulfilled' ? fetchedRequests.value || [] : []);
     } catch (error) {
       console.error('Failed to fetch data:', error);
       setMembers([]);
       setPayments([]);
+      setExpenses([]);
+      setProjects([]);
       setRequests([]);
     }
   };
@@ -147,8 +168,9 @@ const App = () => {
   }
 
   return (
-    <Router>
-      <div className={`app ${isLoggedIn ? '' : 'login-page'} ${theme === 'dark' ? 'theme-dark' : 'theme-light'}`}>
+    <ToastProvider>
+      <Router>
+        <div className={`app ${isLoggedIn ? '' : 'login-page'} ${theme === 'dark' ? 'theme-dark' : 'theme-light'}`}>
         {isLoggedIn ? (
           <>
             <Sidebar currentUser={currentUser} onLogout={handleLogout} />
@@ -160,7 +182,7 @@ const App = () => {
                     path="/dashboard" 
                     element={
                       <ProtectedRoute currentUser={currentUser} screenName="dashboard">
-                        <Dashboard members={members} payments={payments} />
+                        <Dashboard members={members} payments={payments} expenses={expenses} projects={projects} />
                       </ProtectedRoute>
                     } 
                   />
@@ -168,7 +190,7 @@ const App = () => {
                     path="/members" 
                     element={
                       <ProtectedRoute currentUser={currentUser} screenName="members">
-                        <Members members={members} setMembers={setMembers} currentUser={currentUser} />
+                        <Members members={members} setMembers={setMembers} payments={payments} currentUser={currentUser} />
                       </ProtectedRoute>
                     } 
                   />
@@ -177,6 +199,22 @@ const App = () => {
                     element={
                       <ProtectedRoute currentUser={currentUser} screenName="payments">
                         <Payments payments={payments} setPayments={setPayments} members={members} currentUser={currentUser} />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/expenses" 
+                    element={
+                      <ProtectedRoute currentUser={currentUser} screenName="expenses">
+                        <Expenses expenses={expenses} setExpenses={setExpenses} projects={projects} currentUser={currentUser} />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/projects" 
+                    element={
+                      <ProtectedRoute currentUser={currentUser} screenName="projects">
+                        <Projects projects={projects} setProjects={setProjects} members={members} currentUser={currentUser} />
                       </ProtectedRoute>
                     } 
                   />
@@ -200,7 +238,15 @@ const App = () => {
                     path="/profile" 
                     element={
                       <ProtectedRoute currentUser={currentUser} screenName="profile">
-                        <UserManagement members={members} setMembers={setMembers} currentUser={currentUser} />
+                        <UserManagement currentUser={currentUser} />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/master-data" 
+                    element={
+                      <ProtectedRoute currentUser={currentUser} screenName="settings">
+                        <MasterData currentUser={currentUser} />
                       </ProtectedRoute>
                     } 
                   />
@@ -276,8 +322,9 @@ const App = () => {
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         )}
-      </div>
-    </Router>
+        </div>
+      </Router>
+    </ToastProvider>
   );
 };
 

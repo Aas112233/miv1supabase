@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { FaCog, FaBell, FaDatabase, FaHistory, FaPalette, FaDownload, FaUpload, FaTrash, FaGlobe } from 'react-icons/fa';
 import AuditLogViewer from '../components/AuditLogViewer';
+import { useLanguage } from '../contexts/LanguageContext';
 import './Settings.css';
 
 const Settings = ({ 
@@ -15,12 +17,24 @@ const Settings = ({
   theme,
   setTheme
 }) => {
+  const { language, setLanguage } = useLanguage();
   const [activeSection, setActiveSection] = useState('general');
+  const [colorTheme, setColorTheme] = useState(localStorage.getItem('colorTheme') || 'blue');
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
     paymentReminders: true,
     transactionAlerts: true
   });
+
+  const handleColorThemeChange = (color) => {
+    setColorTheme(color);
+    localStorage.setItem('colorTheme', color);
+    document.body.setAttribute('data-color-theme', color);
+  };
+
+  React.useEffect(() => {
+    document.body.setAttribute('data-color-theme', colorTheme);
+  }, []);
 
   const handleExportData = () => {
     const data = {
@@ -84,7 +98,10 @@ const Settings = ({
 
   return (
     <div className="settings">
-      <h1>Settings</h1>
+      <div className="settings-header">
+        <h1>Settings</h1>
+        <p className="settings-subtitle">Manage your application preferences and configurations</p>
+      </div>
       
       <div className="settings-container">
         <div className="settings-sidebar">
@@ -93,31 +110,36 @@ const Settings = ({
               className={activeSection === 'general' ? 'active' : ''} 
               onClick={() => setActiveSection('general')}
             >
-              General
+              <FaCog className="sidebar-icon" />
+              <span>General</span>
             </li>
             <li 
               className={activeSection === 'notifications' ? 'active' : ''} 
               onClick={() => setActiveSection('notifications')}
             >
-              Notifications
+              <FaBell className="sidebar-icon" />
+              <span>Notifications</span>
             </li>
             <li 
               className={activeSection === 'data' ? 'active' : ''} 
               onClick={() => setActiveSection('data')}
             >
-              Data Management
+              <FaDatabase className="sidebar-icon" />
+              <span>Data Management</span>
             </li>
             <li 
               className={activeSection === 'audit' ? 'active' : ''} 
               onClick={() => setActiveSection('audit')}
             >
-              Audit Logs
+              <FaHistory className="sidebar-icon" />
+              <span>Audit Logs</span>
             </li>
             <li 
               className={activeSection === 'appearance' ? 'active' : ''} 
               onClick={() => setActiveSection('appearance')}
             >
-              Appearance
+              <FaPalette className="sidebar-icon" />
+              <span>Appearance</span>
             </li>
           </ul>
         </div>
@@ -184,29 +206,43 @@ const Settings = ({
           {activeSection === 'data' && (
             <div className="settings-section">
               <h2>Data Management</h2>
-              <div className="setting-item">
-                <button className="btn btn--primary" onClick={handleExportData}>
-                  Export Data
-                </button>
-                <p>Download all your data as a JSON file</p>
-              </div>
-              <div className="setting-item">
-                <label className="file-input-label">
-                  Import Data
-                  <input 
-                    type="file" 
-                    accept=".json" 
-                    onChange={handleImportData}
-                    style={{ display: 'none' }}
-                  />
-                </label>
-                <p>Upload a JSON file to restore your data</p>
-              </div>
-              <div className="setting-item">
-                <button className="btn btn--danger" onClick={handleClearData}>
-                  Clear All Data
-                </button>
-                <p className="warning">Warning: This will permanently delete all data</p>
+              <div className="data-actions">
+                <div className="action-card">
+                  <div className="action-icon action-icon--primary">
+                    <FaDownload />
+                  </div>
+                  <h3>Export Data</h3>
+                  <p>Download all your data as a JSON file for backup</p>
+                  <button className="btn btn--primary" onClick={handleExportData}>
+                    <FaDownload /> Export
+                  </button>
+                </div>
+                <div className="action-card">
+                  <div className="action-icon action-icon--info">
+                    <FaUpload />
+                  </div>
+                  <h3>Import Data</h3>
+                  <p>Upload a JSON file to restore your data</p>
+                  <label className="btn btn--secondary file-input-label">
+                    <FaUpload /> Import
+                    <input 
+                      type="file" 
+                      accept=".json" 
+                      onChange={handleImportData}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
+                <div className="action-card">
+                  <div className="action-icon action-icon--danger">
+                    <FaTrash />
+                  </div>
+                  <h3>Clear All Data</h3>
+                  <p className="warning">Permanently delete all data from the system</p>
+                  <button className="btn btn--danger" onClick={handleClearData}>
+                    <FaTrash /> Clear Data
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -223,7 +259,7 @@ const Settings = ({
             <div className="settings-section">
               <h2>Appearance</h2>
               <div className="setting-item">
-                <label>Theme</label>
+                <label>Theme Mode</label>
                 <select 
                   value={theme} 
                   onChange={(e) => setTheme(e.target.value)}
@@ -231,6 +267,41 @@ const Settings = ({
                   <option value="light">Light</option>
                   <option value="dark">Dark</option>
                 </select>
+              </div>
+              <div className="setting-item">
+                <label>Language</label>
+                <select 
+                  value={language} 
+                  onChange={(e) => setLanguage(e.target.value)}
+                >
+                  <option value="en">English</option>
+                  <option value="bn">বাংলা (Bengali)</option>
+                </select>
+              </div>
+              <div className="setting-item">
+                <label>Color Theme</label>
+                <div className="theme-colors">
+                  <div className={`theme-color ${colorTheme === 'blue' ? 'active' : ''}`} onClick={() => handleColorThemeChange('blue')}>
+                    <div className="color-preview" style={{background: 'linear-gradient(135deg, #007bff, #0056b3)'}}></div>
+                    <span>Blue</span>
+                  </div>
+                  <div className={`theme-color ${colorTheme === 'red' ? 'active' : ''}`} onClick={() => handleColorThemeChange('red')}>
+                    <div className="color-preview" style={{background: 'linear-gradient(135deg, #dc3545, #bd2130)'}}></div>
+                    <span>Red</span>
+                  </div>
+                  <div className={`theme-color ${colorTheme === 'green' ? 'active' : ''}`} onClick={() => handleColorThemeChange('green')}>
+                    <div className="color-preview" style={{background: 'linear-gradient(135deg, #28a745, #1e7e34)'}}></div>
+                    <span>Green</span>
+                  </div>
+                  <div className={`theme-color ${colorTheme === 'purple' ? 'active' : ''}`} onClick={() => handleColorThemeChange('purple')}>
+                    <div className="color-preview" style={{background: 'linear-gradient(135deg, #6f42c1, #5a32a3)'}}></div>
+                    <span>Purple</span>
+                  </div>
+                  <div className={`theme-color ${colorTheme === 'orange' ? 'active' : ''}`} onClick={() => handleColorThemeChange('orange')}>
+                    <div className="color-preview" style={{background: 'linear-gradient(135deg, #fd7e14, #e8590c)'}}></div>
+                    <span>Orange</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}

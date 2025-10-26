@@ -8,7 +8,6 @@ const ProtectedRoute = ({
   requiredPermission = 'read',
   screenName 
 }) => {
-  // If no user is logged in, redirect to login
   if (!currentUser) {
     return <Navigate to="/login" replace />;
   }
@@ -18,16 +17,14 @@ const ProtectedRoute = ({
     return children;
   }
 
-  // For member users, check if they have permissions for this screen
-  // In a more complex app, you might check specific permissions here
-  // For now, we'll allow members to access most screens except admin-only ones
-  const adminOnlyScreens = []; // Add screen names that should be admin-only
+  // Check permissions from database
+  const userPermissions = currentUser.permissions || {};
+  const screenPermissions = userPermissions[screenName];
   
-  if (adminOnlyScreens.includes(screenName) && currentUser.role !== 'admin') {
+  if (!screenPermissions || !screenPermissions[requiredPermission]) {
     return <NotAuthorized />;
   }
 
-  // Members can access all other screens
   return children;
 };
 

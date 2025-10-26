@@ -10,6 +10,7 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
   const [showForm, setShowForm] = useState(false);
   const [memberId, setMemberId] = useState('');
   const [amount, setAmount] = useState('');
+  const [isSharePayment, setIsSharePayment] = useState(true);
   const [paymentMonth, setPaymentMonth] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [cashierName, setCashierName] = useState('');
@@ -21,6 +22,32 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
   
   const { addToast } = useToast();
   const { startLoading, stopLoading, isLoading } = useLoading();
+
+  const handleMemberChange = (e) => {
+    const selectedMemberId = e.target.value;
+    setMemberId(selectedMemberId);
+    
+    if (isSharePayment && selectedMemberId) {
+      const member = members.find(m => m.id == selectedMemberId);
+      if (member) {
+        setAmount(member.shareAmount * 1000);
+      }
+    }
+  };
+  
+  const handleSharePaymentToggle = (e) => {
+    const checked = e.target.checked;
+    setIsSharePayment(checked);
+    
+    if (checked && memberId) {
+      const member = members.find(m => m.id == memberId);
+      if (member) {
+        setAmount(member.shareAmount * 1000);
+      }
+    } else if (!checked) {
+      setAmount('');
+    }
+  };
 
   // Generate month/year options from Jan 2025 to Dec 2028
   const generateMonthYearOptions = () => {
@@ -97,6 +124,7 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
         setRequests([...requests, requestWithMemberName]);
         setMemberId('');
         setAmount('');
+        setIsSharePayment(true);
         setPaymentMonth('');
         setPaymentMethod('');
         setCashierName('');
@@ -336,37 +364,53 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
             </div>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="memberId">Member:</label>
+                <label htmlFor="memberId">Member *</label>
                 <select
                   id="memberId"
                   value={memberId}
-                  onChange={(e) => setMemberId(e.target.value)}
-                  required
+                  onChange={handleMemberChange}
                 >
-                  <option value="">Select Member</option>
+                  <option value="">Select a member</option>
                   {members.map((member) => (
                     <option key={member.id} value={member.id}>
-                      {member.name}
+                      {member.name} (Shares: {member.shareAmount})
                     </option>
                   ))}
                 </select>
               </div>
               
               <div className="form-group">
-                <label htmlFor="amount">Amount (BDT):</label>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={isSharePayment}
+                    onChange={handleSharePaymentToggle}
+                  />
+                  <span>Calculate amount as share × 1000 BDT</span>
+                </label>
+                <div className="form-hint">When enabled, amount will be automatically calculated based on member's shares</div>
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="amount">Amount (BDT) *</label>
                 <input
                   type="number"
                   id="amount"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  required
-                  min="1"
+                  placeholder="Enter transaction amount"
+                  readOnly={isSharePayment}
+                  min="0"
+                  step="0.01"
                 />
+                {isSharePayment && memberId && (
+                  <div className="form-hint">Auto-calculated from member's shares</div>
+                )}
               </div>
               
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="paymentMonth">Payment Month:</label>
+                  <label htmlFor="paymentMonth">Payment Month *</label>
                   <div className="autocomplete" ref={autocompleteRef}>
                     <input
                       type="text"
@@ -402,7 +446,7 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
                 </div>
                 
                 <div className="form-group">
-                  <label htmlFor="paymentMethod">Payment Method:</label>
+                  <label htmlFor="paymentMethod">Payment Method *</label>
                   <select
                     id="paymentMethod"
                     value={paymentMethod}
@@ -419,7 +463,7 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
               </div>
               
               <div className="form-group">
-                <label htmlFor="cashierName">Cashier Name:</label>
+                <label htmlFor="cashierName">Cashier Name *</label>
                 <input
                   type="text"
                   id="cashierName"

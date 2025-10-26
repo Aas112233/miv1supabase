@@ -1,10 +1,10 @@
-.payments {
+.expenses {
   padding: 20px;
   max-width: 100%;
   margin: 0 auto;
 }
 
-.payments-header {
+.expenses-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -13,13 +13,13 @@
   gap: 15px;
 }
 
-.payments-header h2 {
+.expenses-header h2 {
   margin: 0;
   color: inherit;
   font-size: 1.8rem;
 }
 
-.payments-stats {
+.expenses-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 20px;
@@ -53,21 +53,6 @@ body.theme-dark .stat-card {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
-.stat-card h3 {
-  margin: 0 0 10px 0;
-  font-size: 2.2rem;
-  color: inherit;
-  font-weight: 700;
-}
-
-.stat-card p {
-  margin: 0;
-  color: inherit;
-  font-size: 1rem;
-  opacity: 0.8;
-}
-
-/* Enhanced stat card styles */
 .stat-card .stat-value {
   font-size: 2.5rem;
   font-weight: 700;
@@ -82,20 +67,20 @@ body.theme-dark .stat-card {
   color: inherit;
 }
 
-.payments-list {
+.expenses-list {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   margin-bottom: 30px;
-  overflow-x: auto; /* Enable horizontal scrolling */
+  overflow-x: auto;
 }
 
-body.theme-light .payments-list {
+body.theme-light .expenses-list {
   background: #ffffff;
   border: 1px solid #e9ecef;
 }
 
-body.theme-dark .payments-list {
+body.theme-dark .expenses-list {
   background: #1e1e1e;
   border: 1px solid #343a40;
 }
@@ -103,7 +88,7 @@ body.theme-dark .payments-list {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 800px; /* Ensure table is wide enough to demonstrate scrolling */
+  min-width: 800px;
 }
 
 .data-table thead {
@@ -164,105 +149,6 @@ body.theme-dark .data-table tbody tr:hover {
   background-color: #2d2d2d;
 }
 
-.status-badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  display: inline-block;
-}
-
-.status-badge--completed {
-  background-color: #d4edda;
-  color: #155724;
-}
-
-.status-badge--pending {
-  background-color: #fff3cd;
-  color: #856404;
-}
-
-.status-badge--cancelled {
-  background-color: #f8d7da;
-  color: #721c24;
-}
-
-/* Autocomplete styles */
-.autocomplete {
-  position: relative;
-  width: 100%;
-}
-
-.autocomplete-input {
-  width: 100%;
-  padding: 12px 15px;
-  border-radius: 8px;
-  font-size: 1rem;
-  border: 1px solid;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-body.theme-light .autocomplete-input {
-  background-color: #ffffff;
-  color: #212529;
-  border-color: #ced4da;
-}
-
-body.theme-dark .autocomplete-input {
-  background-color: #2d2d2d;
-  color: #e9ecef;
-  border-color: #495057;
-}
-
-.autocomplete-input:focus {
-  outline: 0;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-}
-
-body.theme-light .autocomplete-input:focus {
-  border-color: #007bff;
-}
-
-body.theme-dark .autocomplete-input:focus {
-  border-color: #1976d2;
-}
-
-.autocomplete-suggestions {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background-color: #ffffff;
-  border: 1px solid #ced4da;
-  border-top: none;
-  border-radius: 0 0 8px 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-body.theme-dark .autocomplete-suggestions {
-  background-color: #1e1e1e;
-  border-color: #495057;
-}
-
-.autocomplete-suggestion {
-  padding: 12px 15px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.autocomplete-suggestion:hover {
-  background-color: #f8f9fa;
-}
-
-body.theme-dark .autocomplete-suggestion:hover {
-  background-color: #2d2d2d;
-}
-
-/* Overlay styles */
 .overlay {
   position: fixed;
   top: 0;
@@ -344,7 +230,7 @@ body.theme-dark .close-btn:hover {
   background-color: #343a40;
 }
 
-.payment-form {
+.expense-form {
   padding: 30px;
 }
 
@@ -379,8 +265,6 @@ body.theme-dark .form-section-title {
   border-bottom-color: #343a40;
 }
 
-
-
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -400,40 +284,6 @@ body.theme-dark .form-section-title {
   font-size: 0.95rem;
 }
 
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 1rem;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-}
-
-.checkbox-label span {
-  user-select: none;
-}
-
-.form-hint {
-  margin-top: 6px;
-  font-size: 0.85rem;
-  opacity: 0.7;
-  font-style: italic;
-}
-
-body.theme-light .form-hint {
-  color: #6c757d;
-}
-
-body.theme-dark .form-hint {
-  color: #95a5a6;
-}
-
 .form-group input,
 .form-group select {
   width: 100%;
@@ -443,23 +293,6 @@ body.theme-dark .form-hint {
   border: 2px solid;
   transition: all 0.3s ease;
   box-sizing: border-box;
-}
-
-.form-group input::placeholder {
-  opacity: 0.6;
-}
-
-.form-group input[readonly] {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-body.theme-light .form-group input[readonly] {
-  background-color: #f8f9fa;
-}
-
-body.theme-dark .form-group input[readonly] {
-  background-color: #1e1e1e;
 }
 
 body.theme-light .form-group input,
@@ -490,17 +323,6 @@ body.theme-light .form-group select:focus {
 body.theme-dark .form-group input:focus,
 body.theme-dark .form-group select:focus {
   border-color: #1976d2;
-}
-
-.checkbox-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.checkbox-container input[type="checkbox"] {
-  width: auto;
-  transform: scale(1.2);
 }
 
 .form-actions {
@@ -643,25 +465,20 @@ body.theme-dark .btn--danger:hover {
   background-color: #c62828;
 }
 
-/* Responsive adjustments */
-@media (max-width: 1024px) {
-  /* Card-based grid styles removed */
-}
-
 @media (max-width: 768px) {
-  .payments {
+  .expenses {
     padding: 15px;
   }
   
-  .payments-header {
+  .expenses-header {
     margin-bottom: 20px;
   }
   
-  .payments-header h2 {
+  .expenses-header h2 {
     font-size: 1.5rem;
   }
   
-  .payments-stats {
+  .expenses-stats {
     grid-template-columns: 1fr;
     gap: 15px;
     margin-bottom: 20px;
@@ -669,10 +486,6 @@ body.theme-dark .btn--danger:hover {
   
   .stat-card {
     padding: 20px;
-  }
-  
-  .stat-card h3 {
-    font-size: 1.8rem;
   }
   
   .form-row {
@@ -693,58 +506,16 @@ body.theme-dark .btn--danger:hover {
   .overlay-content {
     max-width: 95%;
   }
-  
-  .overlay-content h2 {
-    font-size: 1.3rem;
-    margin-bottom: 20px;
-  }
-  
-  .form-group {
-    margin-bottom: 15px;
-  }
-  
-  .form-group input,
-  .form-group select {
-    padding: 10px 12px;
-    font-size: 0.9rem;
-  }
-  
-  .form-actions {
-    gap: 10px;
-    margin-top: 20px;
-    padding-top: 15px;
-  }
-  
-  .btn {
-    padding: 10px 20px;
-    font-size: 0.9rem;
-  }
-}
-
-@media (min-width: 769px) {
-  /* Table display styles removed */
 }
 
 @media (max-width: 480px) {
-  .payments {
+  .expenses {
     padding: 10px;
   }
   
-  .payments-header {
+  .expenses-header {
     flex-direction: column;
     align-items: stretch;
-  }
-  
-  .payments-stats {
-    gap: 12px;
-  }
-  
-  .stat-card {
-    padding: 15px;
-  }
-  
-  .stat-card h3 {
-    font-size: 1.5rem;
   }
   
   .data-table {
@@ -757,19 +528,6 @@ body.theme-dark .btn--danger:hover {
     padding: 10px 12px;
     font-size: 0.8rem;
     white-space: nowrap;
-  }
-  
-  .status-badge {
-    padding: 4px 8px;
-    font-size: 0.7rem;
-  }
-  
-  .overlay-content {
-    padding: 20px 15px;
-  }
-  
-  .overlay-content h2 {
-    font-size: 1.2rem;
   }
   
   .form-actions {

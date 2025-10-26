@@ -6,11 +6,15 @@ import { hasWritePermission } from '../components/PermissionChecker';
 import membersService from '../api/membersService';
 import authService from '../api/authService';
 import userService from '../api/userService';
+import { getUserFriendlyError } from '../src/utils/errorHandler';
 import './Members.css';
 
-const Members = ({ members, setMembers, currentUser }) => {
+const Members = ({ members, setMembers, payments, currentUser }) => {
   const [showForm, setShowForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [memberFinancials, setMemberFinancials] = useState(null);
   const [editingMember, setEditingMember] = useState(null);
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
@@ -27,27 +31,49 @@ const Members = ({ members, setMembers, currentUser }) => {
     e.preventDefault();
     
     // Validate required fields
-    if (!name || !contact || !shareAmount) {
-      addToast('Please fill in all required fields', 'error');
+    if (!name.trim()) {
+      addToast('Please enter member name', 'error');
+      return;
+    }
+    
+    if (!contact.trim()) {
+      addToast('Please enter contact information', 'error');
+      return;
+    }
+    
+    if (!shareAmount || parseInt(shareAmount) < 1) {
+      addToast('Please enter a valid share amount (minimum 1)', 'error');
       return;
     }
     
     // If creating access user, validate email and password
     if (createAccessUser) {
-      if (!userEmail || !userPassword) {
-        addToast('Please provide email and password for access user', 'error');
+      if (!userEmail.trim()) {
+        addToast('Please enter email address', 'error');
+        return;
+      }
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(userEmail)) {
+        addToast('Please enter a valid email address', 'error');
+        return;
+      }
+      
+      if (!userPassword) {
+        addToast('Please enter password', 'error');
+        return;
+      }
+      
+      // Check password length
+      if (userPassword.length < 6) {
+        addToast('Password must be at least 6 characters', 'error');
         return;
       }
       
       // Check if passwords match
       if (userPassword !== confirmPassword) {
         addToast('Passwords do not match', 'error');
-        return;
-      }
-      
-      // Check password length
-      if (userPassword.length < 6) {
-        addToast('Password must be at least 6 characters long', 'error');
         return;
       }
     }
@@ -111,7 +137,7 @@ const Members = ({ members, setMembers, currentUser }) => {
       setConfirmPassword('');
       setShowForm(false);
     } catch (error) {
-      addToast(error.message || 'Failed to add member', 'error');
+      addToast(getUserFriendlyError(error), 'error');
     } finally {
       stopLoading('addMember');
     }
@@ -197,7 +223,7 @@ const Members = ({ members, setMembers, currentUser }) => {
         
         addToast(`Member ${name} updated successfully!`, 'success');
       } catch (error) {
-        addToast(error.message || 'Failed to update member', 'error');
+        addToast(getUserFriendlyError(error), 'error');
       } finally {
         stopLoading('editMember');
       }
@@ -219,20 +245,74 @@ const Members = ({ members, setMembers, currentUser }) => {
   };
 
   const handleDelete = async (memberId) => {
+    // Check if member has any transactions
+    const hasTransactions = payments.some(payment => 
+      payment.memberId == memberId || payment.member_id == memberId
+    );
+    
+    if (hasTransactions) {
+      addToast('Cannot delete member with existing transactions', 'error');
+      return;
+    }
+    
     if (window.confirm('Are you sure you want to delete this member?')) {
       try {
+        const member = members.find(m => m.id === memberId);
+        
+        // If member has a userId, delete the user account first
+        if (member?.userId) {
+          try {
+            await authService.deleteUser(member.userId);
+            await userService.deleteUserProfile(member.userId);
+          } catch (userError) {
+            console.error('Failed to delete user account:', userError);
+            // Continue with member deletion even if user deletion fails
+          }
+        }
+        
         await membersService.deleteMember(memberId);
         const updatedMembers = members.filter(member => member.id !== memberId);
         setMembers(updatedMembers);
         addToast('Member deleted successfully!', 'success');
       } catch (error) {
-        addToast(error.message || 'Failed to delete member', 'error');
+        addToast(getUserFriendlyError(error), 'error');
       }
     }
   };
 
   const totalShares = members.reduce((sum, member) => sum + member.shareAmount, 0);
   const totalMembers = members.length;
+
+  const getMemberBalance = (memberId) => {
+    return payments
+      .filter(p => p.memberId == memberId || p.member_id == memberId)
+      .reduce((sum, p) => sum + p.amount, 0);
+  };
+
+  const handleViewDetails = async (member) => {
+    setSelectedMember(member);
+    startLoading('memberDetails');
+    
+    try {
+      const memberPayments = payments.filter(p => p.memberId == member.id || p.member_id == member.id);
+      const totalPayments = memberPayments.reduce((sum, p) => sum + p.amount, 0);
+      
+      setMemberFinancials({
+        payments: memberPayments,
+        totalPayments,
+        investments: 0,
+        profits: 0,
+        losses: 0,
+        expenses: 0
+      });
+      
+      setShowDetailsModal(true);
+    } catch (error) {
+      addToast(getUserFriendlyError(error), 'error');
+    } finally {
+      stopLoading('memberDetails');
+    }
+  };
 
   return (
     <div className="members">
@@ -315,6 +395,7 @@ const Members = ({ members, setMembers, currentUser }) => {
                 <th>Name</th>
                 <th>Contact</th>
                 <th>Share Amount</th>
+                <th>Total Balance</th>
                 <th>Join Date</th>
                 <th>Actions</th>
               </tr>
@@ -326,9 +407,21 @@ const Members = ({ members, setMembers, currentUser }) => {
                   <td className="member-name">{member.name}</td>
                   <td>{member.contact}</td>
                   <td className="share-amount">{member.shareAmount}</td>
+                  <td className="balance-amount">৳{getMemberBalance(member.id).toFixed(2)}</td>
                   <td>{member.joinDate}</td>
                   <td>
                     <div className="action-buttons">
+                      <button 
+                        className="btn btn--icon btn--info" 
+                        title="View Financial Details"
+                        onClick={() => handleViewDetails(member)}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M12 16V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                          <circle cx="12" cy="8" r="1" fill="currentColor"/>
+                        </svg>
+                      </button>
                       <button 
                         className="btn btn--icon btn--secondary" 
                         title="Edit Member"
@@ -396,105 +489,105 @@ const Members = ({ members, setMembers, currentUser }) => {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="member-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="name">Full Name *</label>
-                  <input
-                    type="text"
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter member's full name"
-                    required
-                    autoComplete="off"
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="contact">Contact Information *</label>
-                  <input
-                    type="text"
-                    id="contact"
-                    value={contact}
-                    onChange={(e) => setContact(e.target.value)}
-                    placeholder="Email or phone number"
-                    required
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <label htmlFor="shareAmount">Share Amount *</label>
-                <input
-                  type="number"
-                  id="shareAmount"
-                  value={shareAmount}
-                  onChange={(e) => setShareAmount(e.target.value)}
-                  placeholder="Number of shares"
-                  min="1"
-                  required
-                  autoComplete="off"
-                />
-                <div className="form-hint">
-                  Each share is worth 1000 BDT
-                </div>
-              </div>
-              
-              {/* Option to create access user */}
-              <div className="form-group checkbox-container">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={createAccessUser}
-                    onChange={(e) => setCreateAccessUser(e.target.checked)}
-                  />
-                  Create access user for this member
-                </label>
-              </div>
-              
-              {/* User credentials fields - shown when createAccessUser is checked */}
-              {createAccessUser && (
-                <>
+              <div className="form-section">
+                <h3 className="form-section-title">Member Information</h3>
+                <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="userEmail">User Email *</label>
+                    <label htmlFor="name">Full Name *</label>
                     <input
-                      type="email"
-                      id="userEmail"
-                      value={userEmail}
-                      onChange={(e) => setUserEmail(e.target.value)}
-                      placeholder="Enter email for member login"
-                      required={createAccessUser}
+                      type="text"
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter member's full name"
                       autoComplete="off"
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="userPassword">Password *</label>
+                    <label htmlFor="contact">Contact Information *</label>
                     <input
-                      type="password"
-                      id="userPassword"
-                      value={userPassword}
-                      onChange={(e) => setUserPassword(e.target.value)}
-                      placeholder="Enter password for member login"
-                      required={createAccessUser}
-                      autoComplete="new-password"
+                      type="text"
+                      id="contact"
+                      value={contact}
+                      onChange={(e) => setContact(e.target.value)}
+                      placeholder="Email or phone number"
+                      autoComplete="off"
                     />
-                    <div className="form-hint">
-                      Password must be at least 6 characters
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="shareAmount">Share Amount *</label>
+                  <input
+                    type="number"
+                    id="shareAmount"
+                    value={shareAmount}
+                    onChange={(e) => setShareAmount(e.target.value)}
+                    placeholder="Number of shares"
+                    min="1"
+                    autoComplete="off"
+                  />
+                  <div className="form-hint">
+                    Each share is worth 1000 BDT
+                  </div>
+                </div>
+              </div>
+              
+              <div className="form-divider"></div>
+              
+              <div className="form-section">
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={createAccessUser}
+                      onChange={(e) => setCreateAccessUser(e.target.checked)}
+                    />
+                    <span>Create login access for this member</span>
+                  </label>
+                  <div className="form-hint">Allow this member to access the system</div>
+                </div>
+                
+                {createAccessUser && (
+                  <div className="user-credentials-section">
+                    <h3 className="form-section-title">Login Credentials</h3>
+                    <div className="form-group">
+                      <label htmlFor="userEmail">Email Address *</label>
+                      <input
+                        type="email"
+                        id="userEmail"
+                        value={userEmail}
+                        onChange={(e) => setUserEmail(e.target.value)}
+                        placeholder="member@example.com"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="userPassword">Password *</label>
+                        <input
+                          type="password"
+                          id="userPassword"
+                          value={userPassword}
+                          onChange={(e) => setUserPassword(e.target.value)}
+                          placeholder="Minimum 6 characters"
+                          autoComplete="new-password"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="confirmPassword">Confirm Password *</label>
+                        <input
+                          type="password"
+                          id="confirmPassword"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Re-enter password"
+                          autoComplete="new-password"
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="form-group">
-                    <label htmlFor="confirmPassword">Confirm Password *</label>
-                    <input
-                      type="password"
-                      id="confirmPassword"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter password for member login"
-                      required={createAccessUser}
-                      autoComplete="new-password"
-                    />
-                  </div>
-                </>
-              )}
+                )}
+              </div>
               
               <div className="form-actions">
                 {isLoading('addMember') ? (
@@ -661,6 +754,80 @@ const Members = ({ members, setMembers, currentUser }) => {
                 )}
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Member Financial Details Modal */}
+      {showDetailsModal && selectedMember && (
+        <div className="overlay">
+          <div className="overlay-content overlay-content--large">
+            <div className="overlay-header">
+              <h2>{selectedMember.name} - Financial Details</h2>
+              <button className="overlay-close" onClick={() => setShowDetailsModal(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            
+            {isLoading('memberDetails') ? (
+              <LoadingSpinner />
+            ) : memberFinancials && (
+              <div className="member-details">
+                <div className="details-summary">
+                  <div className="summary-card">
+                    <div className="summary-label">Total Payments</div>
+                    <div className="summary-value summary-value--success">৳{memberFinancials.totalPayments.toFixed(2)}</div>
+                  </div>
+                  <div className="summary-card">
+                    <div className="summary-label">Investments</div>
+                    <div className="summary-value">৳{memberFinancials.investments.toFixed(2)}</div>
+                  </div>
+                  <div className="summary-card">
+                    <div className="summary-label">Profits</div>
+                    <div className="summary-value summary-value--success">৳{memberFinancials.profits.toFixed(2)}</div>
+                  </div>
+                  <div className="summary-card">
+                    <div className="summary-label">Losses</div>
+                    <div className="summary-value summary-value--danger">৳{memberFinancials.losses.toFixed(2)}</div>
+                  </div>
+                  <div className="summary-card">
+                    <div className="summary-label">Expenses</div>
+                    <div className="summary-value summary-value--danger">৳{memberFinancials.expenses.toFixed(2)}</div>
+                  </div>
+                </div>
+
+                <div className="details-section">
+                  <h3>Payment History</h3>
+                  {memberFinancials.payments.length > 0 ? (
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Month</th>
+                          <th>Amount</th>
+                          <th>Method</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {memberFinancials.payments.map((payment, idx) => (
+                          <tr key={idx}>
+                            <td>{payment.payment_date || payment.paymentDate}</td>
+                            <td>{payment.description || payment.paymentMonth}</td>
+                            <td>৳{payment.amount.toFixed(2)}</td>
+                            <td>{payment.payment_method || payment.paymentMethod}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="no-data">No payment records found</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

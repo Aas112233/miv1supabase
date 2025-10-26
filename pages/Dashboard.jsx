@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FaUsers, FaMoneyBillWave, FaCreditCard, FaDollarSign } from 'react-icons/fa';
+import { FaUsers, FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
+import CurrencyBangladeshiIcon from '../components/CurrencyBangladeshiIcon';
 import { 
   LineChart, Line, BarChart, Bar, RadarChart, Radar, 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
@@ -9,12 +10,14 @@ import useLoading from '../hooks/useLoading';
 import LoadingSpinner from '../components/LoadingSpinner';
 import './Dashboard.css';
 
-const Dashboard = ({ members, payments }) => {
+const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
   const [stats, setStats] = useState({
     totalMembers: 0,
     totalShares: 0,
     totalPayments: 0,
-    totalAmount: 0
+    totalAmount: 0,
+    totalExpenses: 0,
+    activeProjects: 0
   });
   
   const { startLoading, stopLoading, isLoading } = useLoading();
@@ -27,17 +30,21 @@ const Dashboard = ({ members, payments }) => {
     setTimeout(() => {
       const totalShares = members.reduce((sum, member) => sum + member.shareAmount, 0);
       const totalAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
+      const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+      const activeProjects = projects.filter(p => p.status === 'Active').length;
       
       setStats({
         totalMembers: members.length,
         totalShares,
         totalPayments: payments.length,
-        totalAmount
+        totalAmount,
+        totalExpenses,
+        activeProjects
       });
       
       stopLoading('loadStats');
     }, 600);
-  }, [members, payments]);
+  }, [members, payments, expenses, projects]);
 
   // Prepare data for Total Savings Growth chart
   const savingsGrowthData = useMemo(() => {
@@ -109,6 +116,18 @@ const Dashboard = ({ members, payments }) => {
     // Convert to array
     return Object.values(memberContributions);
   }, [payments, members]);
+
+  // Prepare data for Project Revenue/Loss chart
+  const projectFinancialsData = useMemo(() => {
+    if (!projects.length) return [];
+    
+    return projects.map(project => ({
+      name: project.name,
+      revenue: project.total_revenue || 0,
+      investment: project.initial_investment || 0,
+      profit: (project.total_revenue || 0) - (project.initial_investment || 0)
+    })).slice(0, 10);
+  }, [projects]);
 
   // Prepare data for Top Performing Payment Months chart
   const topPerformingMonthsData = useMemo(() => {
@@ -200,11 +219,38 @@ const Dashboard = ({ members, payments }) => {
             
             <div className="stat-card">
               <div className="stat-icon stat-icon--amount">
-                <FaDollarSign />
+                <CurrencyBangladeshiIcon size={32} color="currentColor" />
               </div>
               <div className="stat-info">
-                <h3>{stats.totalAmount.toFixed(2)}</h3>
-                <p>Total Amount (BDT)</p>
+                <h3>৳{stats.totalAmount.toFixed(2)}</h3>
+                <p>Total Amount</p>
+              </div>
+            </div>
+            
+            <div className="stat-card">
+              <div className="stat-icon stat-icon--expenses">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M19 14C20.49 12.54 22 10.79 22 8.5C22 7.04131 21.4205 5.64236 20.3891 4.61091C19.3576 3.57946 17.9587 3 16.5 3C14.74 3 13.5 3.5 12 5C10.5 3.5 9.26 3 7.5 3C6.04131 3 4.64236 3.57946 3.61091 4.61091C2.57946 5.64236 2 7.04131 2 8.5C2 10.8 3.5 12.55 5 14L12 21L19 14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 5V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div className="stat-info">
+                <h3>৳{stats.totalExpenses.toFixed(2)}</h3>
+                <p>Total Expenses</p>
+              </div>
+            </div>
+            
+            <div className="stat-card">
+              <div className="stat-icon stat-icon--projects">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div className="stat-info">
+                <h3>{stats.activeProjects}</h3>
+                <p>Active Projects</p>
               </div>
             </div>
           </div>
@@ -235,7 +281,7 @@ const Dashboard = ({ members, payments }) => {
                     <Line 
                       type="monotone" 
                       dataKey="amount" 
-                      name="Total Savings (BDT)" 
+                      name="Total Savings (৳)" 
                       stroke="#007bff" 
                       strokeWidth={2}
                       dot={{ r: 4 }}
@@ -269,7 +315,7 @@ const Dashboard = ({ members, payments }) => {
                     <Line 
                       type="monotone" 
                       dataKey="amount" 
-                      name="Monthly Savings (BDT)" 
+                      name="Monthly Savings (৳)" 
                       stroke="#28a745" 
                       strokeWidth={2}
                       dot={{ r: 4 }}
@@ -294,13 +340,59 @@ const Dashboard = ({ members, payments }) => {
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Radar
-                      name="Contribution (BDT)"
+                      name="Contribution (৳)"
                       dataKey="amount"
                       stroke="#ffc107"
                       fill="#ffc107"
                       fillOpacity={0.6}
                     />
                   </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Project Revenue/Loss Chart */}
+            <div className="chart-container">
+              <h3>Project Financial Overview</h3>
+              <div className="chart-wrapper">
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={projectFinancialsData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => value.toLocaleString()}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="revenue" 
+                      name="Revenue (৳)" 
+                      stroke="#28a745" 
+                      strokeWidth={2}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="investment" 
+                      name="Investment (৳)" 
+                      stroke="#ffc107" 
+                      strokeWidth={2}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="profit" 
+                      name="Profit/Loss (৳)" 
+                      stroke="#007bff" 
+                      strokeWidth={2}
+                    />
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -327,7 +419,7 @@ const Dashboard = ({ members, payments }) => {
                     <Legend />
                     <Bar 
                       dataKey="amount" 
-                      name="Total Amount (BDT)" 
+                      name="Total Amount (৳)" 
                       fill="#17a2b8" 
                     />
                   </BarChart>
@@ -343,7 +435,7 @@ const Dashboard = ({ members, payments }) => {
                 {payments.slice(0, 5).map((payment) => (
                   <div className="payment-item" key={payment.id}>
                     <div className="payment-member">{payment.memberName}</div>
-                    <div className="payment-amount">{payment.amount.toFixed(2)} BDT</div>
+                    <div className="payment-amount">৳{payment.amount.toFixed(2)}</div>
                     <div className="payment-date">{payment.paymentDate}</div>
                   </div>
                 ))}

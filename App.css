@@ -1,4 +1,34 @@
 /* App.css - Sidebar Navigation Styles */
+:root {
+  --primary-color: #007bff;
+  --primary-hover: #0056b3;
+}
+
+[data-color-theme="blue"] {
+  --primary-color: #007bff;
+  --primary-hover: #0056b3;
+}
+
+[data-color-theme="red"] {
+  --primary-color: #dc3545;
+  --primary-hover: #bd2130;
+}
+
+[data-color-theme="green"] {
+  --primary-color: #28a745;
+  --primary-hover: #1e7e34;
+}
+
+[data-color-theme="purple"] {
+  --primary-color: #6f42c1;
+  --primary-hover: #5a32a3;
+}
+
+[data-color-theme="orange"] {
+  --primary-color: #fd7e14;
+  --primary-hover: #e8590c;
+}
+
 .app {
   display: flex;
   min-height: 100vh;
@@ -255,7 +285,7 @@ body.theme-dark .app-loading {
 }
 
 .theme-light .navbar a.active {
-  background-color: #007bff;
+  background-color: var(--primary-color);
   color: white;
 }
 
@@ -281,7 +311,7 @@ body.theme-dark .app-loading {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: #007bff;
+  background-color: var(--primary-color);
   color: white;
   display: flex;
   align-items: center;
@@ -341,7 +371,7 @@ body.theme-dark .app-loading {
 .theme-light .select-user-link {
   display: block;
   padding: 0.5rem;
-  background-color: #007bff;
+  background-color: var(--primary-color);
   color: white;
   text-decoration: none;
   border-radius: 4px;
@@ -351,7 +381,7 @@ body.theme-dark .app-loading {
 }
 
 .theme-light .select-user-link:hover {
-  background-color: #0069d9;
+  background-color: var(--primary-hover);
 }
 
 .theme-light .main-content {
@@ -413,7 +443,7 @@ body.theme-dark .app-loading {
 }
 
 .theme-dark .navbar a.active {
-  background-color: #1976d2;
+  background-color: var(--primary-color);
   color: white;
 }
 
@@ -439,7 +469,7 @@ body.theme-dark .app-loading {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: #1976d2;
+  background-color: var(--primary-color);
   color: white;
   display: flex;
   align-items: center;
@@ -499,7 +529,7 @@ body.theme-dark .app-loading {
 .theme-dark .select-user-link {
   display: block;
   padding: 0.5rem;
-  background-color: #1976d2;
+  background-color: var(--primary-color);
   color: white;
   text-decoration: none;
   border-radius: 4px;
@@ -509,7 +539,7 @@ body.theme-dark .app-loading {
 }
 
 .theme-dark .select-user-link:hover {
-  background-color: #1565c0;
+  background-color: var(--primary-hover);
 }
 
 .theme-dark .main-content {

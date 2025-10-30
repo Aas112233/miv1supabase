@@ -280,6 +280,43 @@ body.theme-dark .no-payments {
   color: #adb5bd;
 }
 
+/* Skeleton Loading */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 12px;
+}
+
+body.theme-dark .skeleton {
+  background: linear-gradient(90deg, #2d3748 25%, #1a202c 50%, #2d3748 75%);
+  background-size: 200% 100%;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-stat-card {
+  height: 110px;
+  width: 100%;
+}
+
+.skeleton-chart {
+  height: 400px;
+  width: 100%;
+}
+
+.skeleton-recent {
+  height: 300px;
+  width: 100%;
+}
+
 /* Responsive styles */
 @media (min-width: 1400px) {
   .dashboard-charts {

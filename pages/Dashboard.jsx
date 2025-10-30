@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, PolarGrid, PolarAngleAxis, PolarRadiusAxis 
 } from 'recharts';
 import useLoading from '../hooks/useLoading';
+import useCountUp from '../hooks/useCountUp';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { parseDbDate, getMonthKey, getMonthName, formatDateDisplay } from '../utils/dateUtils';
 import './Dashboard.css';
@@ -23,12 +24,20 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
   });
   
   const { startLoading, stopLoading, isLoading } = useLoading();
+  
+  // Animated counters
+  const animatedMembers = useCountUp(stats.totalMembers, 1000);
+  const animatedShares = useCountUp(stats.totalShares, 1000);
+  const animatedPayments = useCountUp(stats.totalPayments, 1000);
+  const animatedAmount = useCountUp(stats.totalAmount, 1500, 2);
+  const animatedExpenses = useCountUp(stats.totalExpenses, 1500, 2);
+  const animatedProjects = useCountUp(stats.activeProjects, 1000);
 
   // Calculate stats with simulated loading
   useEffect(() => {
     startLoading('loadStats');
     
-    // Simulate API call delay
+    // Simulate API call delay (2 seconds for skeleton)
     setTimeout(() => {
       const totalShares = members.reduce((sum, member) => sum + (member.shareAmount || 0), 0);
       const totalAmount = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
@@ -46,7 +55,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
       });
       
       stopLoading('loadStats');
-    }, 600);
+    }, 2000);
   }, [members, payments, expenses, projects]);
 
   // Prepare data for Total Savings Growth chart
@@ -209,9 +218,19 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
       </div>
 
       {isLoading('loadStats') ? (
-        <div className="loading-container">
-          <LoadingSpinner message="Loading dashboard data..." />
-        </div>
+        <>
+          <div className="dashboard-stats">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="skeleton skeleton-stat-card"></div>
+            ))}
+          </div>
+          <div className="dashboard-charts">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="skeleton skeleton-chart"></div>
+            ))}
+          </div>
+          <div className="skeleton skeleton-recent"></div>
+        </>
       ) : (
         <>
           <div className="dashboard-stats">
@@ -220,7 +239,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                 <FaUsers />
               </div>
               <div className="stat-info">
-                <h3>{stats.totalMembers}</h3>
+                <h3>{animatedMembers}</h3>
                 <p>Members</p>
               </div>
             </div>
@@ -230,7 +249,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                 <FaMoneyBillWave />
               </div>
               <div className="stat-info">
-                <h3>{stats.totalShares}</h3>
+                <h3>{animatedShares}</h3>
                 <p>Total Shares</p>
               </div>
             </div>
@@ -240,7 +259,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                 <FaCreditCard />
               </div>
               <div className="stat-info">
-                <h3>{stats.totalPayments}</h3>
+                <h3>{animatedPayments}</h3>
                 <p>Payments</p>
               </div>
             </div>
@@ -250,7 +269,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                 <CurrencyBangladeshiIcon size={32} color="currentColor" />
               </div>
               <div className="stat-info">
-                <h3>৳{stats.totalAmount.toFixed(2)}</h3>
+                <h3>৳{animatedAmount}</h3>
                 <p>Total Amount</p>
               </div>
             </div>
@@ -263,7 +282,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                 </svg>
               </div>
               <div className="stat-info">
-                <h3>৳{stats.totalExpenses.toFixed(2)}</h3>
+                <h3>৳{animatedExpenses}</h3>
                 <p>Total Expenses</p>
               </div>
             </div>
@@ -277,7 +296,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                 </svg>
               </div>
               <div className="stat-info">
-                <h3>{stats.activeProjects}</h3>
+                <h3>{animatedProjects}</h3>
                 <p>Active Projects</p>
               </div>
             </div>

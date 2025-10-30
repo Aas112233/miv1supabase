@@ -21,6 +21,7 @@ export default {
     payments: 'পেমেন্ট',
     expenses: 'খরচ',
     transactions: 'লেনদেন',
+    analytics: 'বিশ্লেষণ',
     transactionRequests: 'লেনদেন অনুরোধ',
     reports: 'রিপোর্ট',
     dividends: 'লভ্যাংশ',
@@ -107,6 +108,25 @@ export default {
     amount: 'পরিমাণ',
     date: 'তারিখ',
     noTransactions: 'কোন লেনদেন পাওয়া যায়নি',
+  },
+
+  // Analytics
+  analytics: {
+    title: 'পেমেন্ট বিশ্লেষণ',
+    monthlyView: 'মাসিক দৃশ্য',
+    memberView: 'সদস্য দৃশ্য',
+    selectMonth: 'মাস নির্বাচন করুন',
+    selectMember: 'সদস্য নির্বাচন করুন',
+    selectedMember: 'নির্বাচিত সদস্য',
+    selectedMonth: 'নির্বাচিত মাস',
+    topPaidMember: 'সর্বোচ্চ পরিশোধকারী সদস্য',
+    topPaidMembers: 'সর্বোচ্চ পরিশোধকারী সদস্যগণ',
+    monthTotalPaid: 'মোট পরিশোধিত পরিমাণ',
+    shareAmount: 'শেয়ার পরিমাণ',
+    totalPayment: 'মোট পেমেন্ট',
+    paid: 'পরিশোধিত',
+    notPaid: 'অপরিশোধিত',
+    receivedBy: 'গ্রহণকারী',
   },
 
   // Expenses
@@ -252,3 +272,4 @@ export default {
     bengali: 'বাংলা',
   },
 };
+

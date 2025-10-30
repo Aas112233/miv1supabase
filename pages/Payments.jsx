@@ -29,6 +29,10 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
   const { startLoading, stopLoading, isLoading } = useLoading();
 
   useEffect(() => {
+    startLoading('paymentsData');
+    setTimeout(() => {
+      stopLoading('paymentsData');
+    }, 2000);
     loadMasterData();
   }, []);
 
@@ -294,6 +298,27 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
 
   const totalPayments = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const totalTransactions = payments.length;
+
+  if (isLoading('paymentsData')) {
+    return (
+      <div className="payments">
+        <div className="payments-header">
+          <div className="skeleton skeleton-title"></div>
+          <div className="skeleton skeleton-button"></div>
+        </div>
+        <div className="payments-stats">
+          <div className="skeleton skeleton-stat-card"></div>
+          <div className="skeleton skeleton-stat-card"></div>
+        </div>
+        <div className="payments-list">
+          <div className="skeleton skeleton-table-header"></div>
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="skeleton skeleton-table-row"></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="payments">

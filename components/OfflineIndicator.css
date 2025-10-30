@@ -1,0 +1,43 @@
+.offline-indicator {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  animation: slideDown 0.3s ease;
+}
+
+.offline-indicator-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.offline-indicator.offline .offline-indicator-content {
+  background: #e74c3c;
+  color: white;
+}
+
+.offline-indicator.online .offline-indicator-content {
+  background: #27ae60;
+  color: white;
+}
+
+.status-icon {
+  font-size: 1.2rem;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateX(-50%) translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}

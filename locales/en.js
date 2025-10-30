@@ -21,6 +21,7 @@ export default {
     payments: 'Payments',
     expenses: 'Expenses',
     transactions: 'Transactions',
+    analytics: 'Analytics',
     transactionRequests: 'Transaction Requests',
     reports: 'Reports',
     dividends: 'Dividends',
@@ -107,6 +108,25 @@ export default {
     noTransactions: 'No transactions found',
   },
 
+  // Analytics
+  analytics: {
+    title: 'Payment Analytics',
+    monthlyView: 'Monthly View',
+    memberView: 'Member View',
+    selectMonth: 'Select Month',
+    selectMember: 'Select Member',
+    selectedMember: 'Selected Member',
+    selectedMonth: 'Selected Month',
+    topPaidMember: 'Top Paid Member',
+    topPaidMembers: 'Top Paid Members',
+    monthTotalPaid: 'Total Paid Amount',
+    shareAmount: 'Share Amount',
+    totalPayment: 'Total Payment',
+    paid: 'Paid',
+    notPaid: 'Not Paid',
+    receivedBy: 'Received by',
+  },
+
   // Settings
   settings: {
     title: 'Settings',
@@ -118,3 +138,4 @@ export default {
     bengali: 'বাংলা',
   },
 };
+

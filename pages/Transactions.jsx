@@ -17,12 +17,11 @@ const Transactions = ({ payments }) => {
   useEffect(() => {
     startLoading('fetchTransactions');
     
-    // Simulate API call delay
     setTimeout(() => {
       setTransactions(payments);
       setFilteredTransactions(payments);
       stopLoading('fetchTransactions');
-    }, 800);
+    }, 2000);
   }, [payments]);
 
   // Filter transactions based on search term
@@ -99,9 +98,18 @@ const Transactions = ({ payments }) => {
       </div>
 
       {isLoading('fetchTransactions') ? (
-        <div className="loading-container">
-          <LoadingSpinner message="Loading transactions..." />
-        </div>
+        <>
+          <div className="transactions-stats">
+            <div className="skeleton skeleton-stat-card"></div>
+            <div className="skeleton skeleton-stat-card"></div>
+          </div>
+          <div className="transactions-list">
+            <div className="skeleton skeleton-table-header"></div>
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="skeleton skeleton-table-row"></div>
+            ))}
+          </div>
+        </>
       ) : (
         <>
           <div className="transactions-stats">

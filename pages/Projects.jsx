@@ -44,6 +44,13 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
   const { addToast } = useToast();
   const { startLoading, stopLoading, isLoading } = useLoading();
 
+  useEffect(() => {
+    startLoading('projectsData');
+    setTimeout(() => {
+      stopLoading('projectsData');
+    }, 2000);
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -583,6 +590,29 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
       </div>
     );
   };
+
+  if (isLoading('projectsData')) {
+    return (
+      <div className="projects">
+        <div className="projects-header">
+          <div className="skeleton skeleton-title"></div>
+          <div className="skeleton skeleton-button"></div>
+        </div>
+        <div className="tabs">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="skeleton skeleton-tab"></div>
+          ))}
+        </div>
+        <div className="skeleton skeleton-search"></div>
+        <div className="projects-list">
+          <div className="skeleton skeleton-table-header"></div>
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="skeleton skeleton-table-row"></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="projects">

@@ -367,6 +367,84 @@ body.theme-dark .info-value {
   color: #e9ecef;
 }
 
+/* Welcome Modal */
+.welcome-modal {
+  max-width: 450px;
+}
+
+.welcome-icon {
+  font-size: 3rem;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.welcome-message {
+  text-align: center;
+  line-height: 1.6;
+}
+
+.welcome-message p {
+  margin: 8px 0;
+}
+
+.welcome-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+  width: 100%;
+}
+
+.welcome-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.welcome-btn-primary {
+  background: var(--primary-color);
+  color: white;
+}
+
+.welcome-btn-primary:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.welcome-btn-secondary {
+  background: transparent;
+  color: var(--primary-color);
+  border: 2px solid var(--primary-color);
+}
+
+.welcome-btn-secondary:hover {
+  background: rgba(0, 123, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+body.theme-dark .welcome-btn-primary {
+  background: var(--primary-color);
+}
+
+body.theme-dark .welcome-btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+body.theme-dark .welcome-btn-secondary {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+body.theme-dark .welcome-btn-secondary:hover {
+  background: rgba(52, 152, 219, 0.2);
+}
+
 .sidebar-nav {
   flex: 1;
   padding: 10px 0;
@@ -583,6 +661,13 @@ body.theme-dark .logout-btn:hover {
   
   .sidebar.collapsed {
     width: 100%;
+    height: 60px;
+    overflow: hidden;
+  }
+  
+  .sidebar.collapsed .sidebar-nav,
+  .sidebar.collapsed .sidebar-footer {
+    display: none;
   }
   
   body.theme-light .sidebar {

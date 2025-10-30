@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '../contexts/ToastContext';
 import useLoading from '../hooks/useLoading';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -23,9 +23,21 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
   const [userEmail, setUserEmail] = useState('');
   const [userPassword, setUserPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState(null);
+  const [checkingLinks, setCheckingLinks] = useState(false);
+  const [hasLinks, setHasLinks] = useState(false);
   
   const { addToast } = useToast();
   const { startLoading, stopLoading, isLoading } = useLoading();
+
+  // Simulate loading on mount
+  useEffect(() => {
+    startLoading('membersData');
+    setTimeout(() => {
+      stopLoading('membersData');
+    }, 2000);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -245,38 +257,47 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
   };
 
   const handleDelete = async (memberId) => {
-    // Check if member has any transactions
-    const hasTransactions = payments.some(payment => 
-      payment.memberId == memberId || payment.member_id == memberId
-    );
+    const member = members.find(m => m.id === memberId);
+    setMemberToDelete(member);
+    setShowDeleteModal(true);
+    setCheckingLinks(true);
+    setHasLinks(false);
     
-    if (hasTransactions) {
+    // Simulate checking with animation
+    setTimeout(() => {
+      const hasTransactions = payments.some(payment => 
+        payment.memberId == memberId || payment.member_id == memberId
+      );
+      setHasLinks(hasTransactions);
+      setCheckingLinks(false);
+    }, 1500);
+  };
+
+  const confirmDelete = async () => {
+    if (hasLinks) {
       addToast('Cannot delete member with existing transactions', 'error');
+      setShowDeleteModal(false);
       return;
     }
-    
-    if (window.confirm('Are you sure you want to delete this member?')) {
-      try {
-        const member = members.find(m => m.id === memberId);
-        
-        // If member has a userId, delete the user account first
-        if (member?.userId) {
-          try {
-            await authService.deleteUser(member.userId);
-            await userService.deleteUserProfile(member.userId);
-          } catch (userError) {
-            console.error('Failed to delete user account:', userError);
-            // Continue with member deletion even if user deletion fails
-          }
+
+    try {
+      // If member has a userId, delete the user account first
+      if (memberToDelete?.userId) {
+        try {
+          await authService.deleteUser(memberToDelete.userId);
+          await userService.deleteUserProfile(memberToDelete.userId);
+        } catch (userError) {
+          console.error('Failed to delete user account:', userError);
         }
-        
-        await membersService.deleteMember(memberId);
-        const updatedMembers = members.filter(member => member.id !== memberId);
-        setMembers(updatedMembers);
-        addToast('Member deleted successfully!', 'success');
-      } catch (error) {
-        addToast(getUserFriendlyError(error), 'error');
       }
+      
+      await membersService.deleteMember(memberToDelete.id);
+      const updatedMembers = members.filter(member => member.id !== memberToDelete.id);
+      setMembers(updatedMembers);
+      addToast('Member deleted successfully!', 'success');
+      setShowDeleteModal(false);
+    } catch (error) {
+      addToast(getUserFriendlyError(error), 'error');
     }
   };
 
@@ -313,6 +334,33 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
       stopLoading('memberDetails');
     }
   };
+
+  if (isLoading('membersData')) {
+    return (
+      <div className="members">
+        <div className="members-header">
+          <div className="skeleton skeleton-title"></div>
+          <div className="skeleton skeleton-button"></div>
+        </div>
+        <div className="members-stats">
+          <div className="skeleton skeleton-stat-card"></div>
+          <div className="skeleton skeleton-stat-card"></div>
+        </div>
+        <div className="members-list-container">
+          <div className="members-list-header">
+            <div className="skeleton skeleton-subtitle"></div>
+            <div className="skeleton skeleton-search"></div>
+          </div>
+          <div className="members-list">
+            <div className="skeleton skeleton-table-header"></div>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="skeleton skeleton-table-row"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="members">
@@ -754,6 +802,87 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                 )}
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && memberToDelete && (
+        <div className="overlay">
+          <div className="overlay-content overlay-content--small">
+            <div className="overlay-header">
+              <h2>Delete Member</h2>
+              <button className="overlay-close" onClick={() => setShowDeleteModal(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            
+            <div className="delete-modal-content">
+              <div className="delete-member-info">
+                <div className="delete-icon">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 6H5H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <h3>{memberToDelete.name}</h3>
+                <p>Are you sure you want to delete this member?</p>
+              </div>
+
+              <div className="delete-check-section">
+                <div className="check-item">
+                  <div className={`check-icon ${checkingLinks ? 'checking' : hasLinks ? 'error' : 'success'}`}>
+                    {checkingLinks ? (
+                      <div className="spinner"></div>
+                    ) : hasLinks ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div className="check-label">
+                    <span>Checking data connections...</span>
+                    {!checkingLinks && (
+                      <span className={hasLinks ? 'check-result error' : 'check-result success'}>
+                        {hasLinks ? 'Has existing transactions' : 'No data connections found'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {hasLinks && !checkingLinks && (
+                <div className="delete-warning">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>Cannot delete member with existing transactions. Please remove all transactions first.</span>
+                </div>
+              )}
+
+              <div className="delete-actions">
+                <button 
+                  className="btn btn--secondary" 
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="btn btn--danger" 
+                  onClick={confirmDelete}
+                  disabled={checkingLinks || hasLinks}
+                >
+                  {checkingLinks ? 'Checking...' : 'Delete Member'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

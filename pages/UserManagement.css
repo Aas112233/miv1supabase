@@ -33,14 +33,9 @@ body.theme-dark .user-management-header .subtitle {
   width: 100%;
 }
 
-.loading-container {
-  padding: 40px;
-  text-align: center;
-  color: #6c757d;
-}
-
-body.theme-dark .loading-container {
-  color: #b0b0b0;
+.users-table-container {
+  overflow-x: auto;
+  padding: 20px;
 }
 
 body.theme-light .users-list {
@@ -696,4 +691,36 @@ body.theme-dark .form-group select:focus {
   .permission-toggle {
     padding: 10px 12px;
   }
+}
+
+/* Skeleton Loading Styles */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+body.theme-dark .skeleton {
+  background: linear-gradient(90deg, #2d2d2d 25%, #3d3d3d 50%, #2d2d2d 75%);
+  background-size: 200% 100%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-table-header {
+  height: 50px;
+  margin-bottom: 10px;
+}
+
+.skeleton-table-row {
+  height: 70px;
+  margin-bottom: 8px;
 }

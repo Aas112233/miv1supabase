@@ -18,7 +18,8 @@ import {
   FaBars,
   FaReceipt,
   FaProjectDiagram,
-  FaDatabase
+  FaDatabase,
+  FaChartPie
 } from 'react-icons/fa';
 import './Sidebar.css';
 
@@ -27,11 +28,18 @@ const Sidebar = ({ currentUser, onLogout }) => {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useLocalStorage('sidebarCollapsed', false);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useLocalStorage('welcomeModalShown', false);
   const [clubName, setClubName] = useState('Investment Club');
 
   useEffect(() => {
     loadClubName();
-  }, []);
+    if (currentUser && !showWelcomeModal && window.innerWidth <= 768) {
+      const role = currentUser.role?.toLowerCase();
+      if (role === 'admin' || role === 'accountant' || role === 'manager') {
+        setShowWelcomeModal(true);
+      }
+    }
+  }, [currentUser]);
 
   const loadClubName = async () => {
     try {
@@ -49,6 +57,26 @@ const Sidebar = ({ currentUser, onLogout }) => {
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
+  };
+
+  const handleNavClick = () => {
+    if (window.innerWidth <= 768) {
+      setIsCollapsed(true);
+    }
+  };
+
+  const requestDesktopSite = () => {
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (viewport) {
+      viewport.setAttribute('content', 'width=1024');
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=1024';
+      document.head.appendChild(meta);
+    }
+    setShowWelcomeModal(false);
+    window.location.reload();
   };
 
   return (
@@ -80,6 +108,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
             <Link 
               to="/dashboard" 
               className={isActive('/dashboard') ? 'active' : ''}
+              onClick={handleNavClick}
             >
               <FaChartBar className="nav-icon" />
               {!isCollapsed && t.nav.dashboard}
@@ -89,6 +118,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
             <Link 
               to="/members" 
               className={isActive('/members') ? 'active' : ''}
+              onClick={handleNavClick}
             >
               <FaUsers className="nav-icon" />
               {!isCollapsed && t.nav.members}
@@ -98,6 +128,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
             <Link 
               to="/payments" 
               className={isActive('/payments') ? 'active' : ''}
+              onClick={handleNavClick}
             >
               <FaMoneyBillWave className="nav-icon" />
               {!isCollapsed && t.nav.payments}
@@ -107,6 +138,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
             <Link 
               to="/expenses" 
               className={isActive('/expenses') ? 'active' : ''}
+              onClick={handleNavClick}
             >
               <FaReceipt className="nav-icon" />
               {!isCollapsed && t.nav.expenses}
@@ -116,6 +148,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
             <Link 
               to="/projects" 
               className={isActive('/projects') ? 'active' : ''}
+              onClick={handleNavClick}
             >
               <FaProjectDiagram className="nav-icon" />
               {!isCollapsed && 'Projects'}
@@ -125,6 +158,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
             <Link 
               to="/transactions" 
               className={isActive('/transactions') ? 'active' : ''}
+              onClick={handleNavClick}
             >
               <FaCreditCard className="nav-icon" />
               {!isCollapsed && t.nav.transactions}
@@ -132,8 +166,19 @@ const Sidebar = ({ currentUser, onLogout }) => {
           </li>
           <li>
             <Link 
+              to="/analytics" 
+              className={isActive('/analytics') ? 'active' : ''}
+              onClick={handleNavClick}
+            >
+              <FaChartPie className="nav-icon" />
+              {!isCollapsed && t.nav.analytics}
+            </Link>
+          </li>
+          <li>
+            <Link 
               to="/requests" 
               className={isActive('/requests') ? 'active' : ''}
+              onClick={handleNavClick}
             >
               <FaFileAlt className="nav-icon" />
               {!isCollapsed && t.nav.transactionRequests}
@@ -143,6 +188,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
             <Link 
               to="/profile" 
               className={isActive('/profile') ? 'active' : ''}
+              onClick={handleNavClick}
             >
               <FaUser className="nav-icon" />
               {!isCollapsed && t.nav.userManagement}
@@ -152,6 +198,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
             <Link 
               to="/reports" 
               className={isActive('/reports') ? 'active' : ''}
+              onClick={handleNavClick}
             >
               <FaChartLine className="nav-icon" />
               {!isCollapsed && t.nav.reports}
@@ -161,6 +208,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
             <Link 
               to="/dividends" 
               className={isActive('/dividends') ? 'active' : ''}
+              onClick={handleNavClick}
             >
               <FaMoneyBillAlt className="nav-icon" />
               {!isCollapsed && t.nav.dividends}
@@ -170,6 +218,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
             <Link 
               to="/budget" 
               className={isActive('/budget') ? 'active' : ''}
+              onClick={handleNavClick}
             >
               <FaClipboardList className="nav-icon" />
               {!isCollapsed && t.nav.goals}
@@ -179,6 +228,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
             <Link 
               to="/master-data" 
               className={isActive('/master-data') ? 'active' : ''}
+              onClick={handleNavClick}
             >
               <FaDatabase className="nav-icon" />
               {!isCollapsed && 'Master Data'}
@@ -188,12 +238,12 @@ const Sidebar = ({ currentUser, onLogout }) => {
             <Link 
               to="/settings" 
               className={isActive('/settings') ? 'active' : ''}
+              onClick={handleNavClick}
             >
               <FaCog className="nav-icon" />
               {!isCollapsed && t.nav.settings}
             </Link>
           </li>
-          {/* Removed Google Sheets Test link */}
         </ul>
       </nav>
       {currentUser && (
@@ -202,6 +252,42 @@ const Sidebar = ({ currentUser, onLogout }) => {
             <FaSignOutAlt className="nav-icon" />
             {!isCollapsed && t.nav.logout}
           </button>
+        </div>
+      )}
+
+      {showWelcomeModal && window.innerWidth <= 768 && (
+        <div className="user-modal-overlay" onClick={() => setShowWelcomeModal(false)}>
+          <div className="user-modal welcome-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="user-modal-header">
+              <h3>Welcome!</h3>
+              <button className="modal-close" onClick={() => setShowWelcomeModal(false)}>×</button>
+            </div>
+            <div className="user-modal-body">
+              <div className="welcome-icon">👋</div>
+              <div className="welcome-message">
+                <p><strong>Hello {currentUser?.name}!</strong></p>
+                <p>You are logged in as <strong>{currentUser?.role}</strong>.</p>
+                <p style={{ marginTop: '15px', fontSize: '0.95rem' }}>
+                  For the best experience with full features and easier management, 
+                  please try to open this app on a <strong>desktop site or computer</strong>.
+                </p>
+              </div>
+              <div className="welcome-buttons">
+                <button 
+                  className="welcome-btn welcome-btn-primary" 
+                  onClick={requestDesktopSite}
+                >
+                  Switch to Desktop Mode
+                </button>
+                <button 
+                  className="welcome-btn welcome-btn-secondary" 
+                  onClick={() => setShowWelcomeModal(false)}
+                >
+                  Continue on Mobile
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

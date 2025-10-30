@@ -109,8 +109,80 @@ const Reports = ({ members, payments, requests }) => {
     }, 800);
   };
 
+  const exportToCSV = (data, filename) => {
+    const csv = data.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleExportReport = () => {
-    // In a real app, this would export to PDF/CSV
+    if (!generatedReport) return;
+    
+    let csvData = [];
+    let filename = '';
+    
+    switch (reportType) {
+      case 'summary':
+        filename = 'summary_report';
+        csvData = [
+          ['Investment Club Summary Report'],
+          ['Generated on', new Date().toLocaleDateString()],
+          [''],
+          ['Metric', 'Value'],
+          ['Total Members', generatedReport.data.totalMembers],
+          ['Total Payments', `BDT ${generatedReport.data.totalPayments}`],
+          ['Total Transactions', generatedReport.data.totalTransactions],
+          ['Pending Requests', generatedReport.data.pendingRequests],
+          ['Approved Requests', generatedReport.data.approvedRequests]
+        ];
+        break;
+        
+      case 'payments':
+        filename = 'payment_report';
+        csvData = [
+          ['Payment Report'],
+          ['Generated on', new Date().toLocaleDateString()],
+          ['Date Range', `${dateRange.start || 'All'} to ${dateRange.end || 'All'}`],
+          [''],
+          ['Summary'],
+          ['Total Amount', `BDT ${generatedReport.data.totalAmount}`],
+          ['Transaction Count', generatedReport.data.transactionCount],
+          [''],
+          ['Member', 'Amount', 'Month', 'Date', 'Method'],
+          ...generatedReport.data.payments.map(p => [
+            p.memberName,
+            p.amount.toFixed(2),
+            p.paymentMonth,
+            p.paymentDate,
+            p.paymentMethod
+          ])
+        ];
+        break;
+        
+      case 'members':
+        filename = 'member_report';
+        csvData = [
+          ['Member Report'],
+          ['Generated on', new Date().toLocaleDateString()],
+          [''],
+          ['Name', 'Contact', 'Share Amount', 'Total Paid', 'Payment Count'],
+          ...generatedReport.data.members.map(m => [
+            m.name,
+            m.contact,
+            m.shareAmount,
+            `BDT ${m.totalPaid}`,
+            m.paymentCount
+          ])
+        ];
+        break;
+    }
+    
+    exportToCSV(csvData, filename);
     addToast('Report exported successfully!', 'success');
   };
 
@@ -180,7 +252,7 @@ const Reports = ({ members, payments, requests }) => {
               className="btn btn--secondary"
               onClick={handleExportReport}
             >
-              Export Report
+              📥 Export to CSV
             </button>
           </div>
           

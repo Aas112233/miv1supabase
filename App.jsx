@@ -10,12 +10,18 @@ import Expenses from './pages/Expenses';
 import Projects from './pages/Projects';
 import Transactions from './pages/Transactions';
 import TransactionRequests from './pages/TransactionRequests';
+import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
 import Dividends from './pages/Dividends';
 import Login from './pages/Login';
 import LoadingSpinner from './components/LoadingSpinner';
 import UserManagement from './pages/UserManagement';
+import SessionTimeout from './components/SessionTimeout';
+import ErrorBoundary from './components/ErrorBoundary';
+import OfflineIndicator from './components/OfflineIndicator';
+import KeyboardShortcutsHelp from './components/KeyboardShortcutsHelp';
+import KeyboardShortcutsWrapper from './components/KeyboardShortcutsWrapper';
 import ProtectedRoute from './components/ProtectedRoute';
 import NotAuthorized from './pages/NotAuthorized';
 import NotFound from './pages/NotFound';
@@ -111,10 +117,7 @@ const App = () => {
     const permissions = await permissionsService.getUserPermissions(user.id);
     const userWithPermissions = { ...user, permissions };
     
-    setIsLoggedIn(true);
     setCurrentUser(userWithPermissions);
-    
-    await new Promise(resolve => setTimeout(resolve, 100));
     
     try {
       const [fetchedMembers, fetchedPayments, fetchedExpenses, fetchedProjects, fetchedRequests] = await Promise.allSettled([
@@ -137,6 +140,10 @@ const App = () => {
       setProjects([]);
       setRequests([]);
     }
+    
+    // Add delay then set logged in to prevent 404 flash
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setIsLoggedIn(true);
   };
 
   const handleLogout = async () => {
@@ -168,11 +175,16 @@ const App = () => {
   }
 
   return (
-    <ToastProvider>
-      <Router>
+    <ErrorBoundary>
+      <OfflineIndicator />
+      <ToastProvider>
+        <Router>
+        <KeyboardShortcutsWrapper>
+        {isLoggedIn && <KeyboardShortcutsHelp />}
         <div className={`app ${isLoggedIn ? '' : 'login-page'} ${theme === 'dark' ? 'theme-dark' : 'theme-light'}`}>
         {isLoggedIn ? (
           <>
+            <SessionTimeout onLogout={handleLogout} />
             <Sidebar currentUser={currentUser} onLogout={handleLogout} />
             <div className="main-content">
               <div className="content">
@@ -223,6 +235,14 @@ const App = () => {
                     element={
                       <ProtectedRoute currentUser={currentUser} screenName="transactions">
                         <Transactions payments={payments} />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/analytics" 
+                    element={
+                      <ProtectedRoute currentUser={currentUser} screenName="analytics">
+                        <Analytics payments={payments} members={members} />
                       </ProtectedRoute>
                     } 
                   />
@@ -307,8 +327,6 @@ const App = () => {
                       </ProtectedRoute>
                     } 
                   />
-                  {/* Removed Google Sheets Test route */
-                  }
                   <Route path="/not-authorized" element={<NotAuthorized />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
@@ -323,8 +341,10 @@ const App = () => {
           </Routes>
         )}
         </div>
-      </Router>
-    </ToastProvider>
+        </KeyboardShortcutsWrapper>
+        </Router>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 };
 

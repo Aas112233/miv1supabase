@@ -16,6 +16,7 @@ const UserManagement = ({ currentUser }) => {
   const [userRole, setUserRole] = useState('');
   const [authorizedUsers, setAuthorizedUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'member' });
   const [editFormData, setEditFormData] = useState({ name: '', email: '', role: 'member' });
   const [newPassword, setNewPassword] = useState('');
@@ -31,11 +32,16 @@ const UserManagement = ({ currentUser }) => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
+        setInitialLoading(true);
         const users = await userService.getAllUsers();
         setAuthorizedUsers(users || []);
+        setTimeout(() => {
+          setInitialLoading(false);
+        }, 2000);
       } catch (error) {
         console.error('Error fetching users:', error);
         addToast(getUserFriendlyError(error), 'error');
+        setInitialLoading(false);
       } finally {
         setLoading(false);
       }
@@ -308,9 +314,12 @@ const UserManagement = ({ currentUser }) => {
           )}
         </div>
         
-        {loading ? (
-          <div className="loading-container">
-            <p>Loading users...</p>
+        {initialLoading ? (
+          <div className="users-table-container">
+            <div className="skeleton skeleton-table-header"></div>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="skeleton skeleton-table-row"></div>
+            ))}
           </div>
         ) : (
           <div className="users-table-container">

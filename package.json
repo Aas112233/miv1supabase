@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && copy .htaccess dist\\.htaccess",
     "preview": "vite preview"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.76.1",
+    "html2canvas": "^1.4.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-icons": "^5.5.0",

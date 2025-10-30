@@ -101,135 +101,72 @@ body.theme-dark .app-loading {
     flex-direction: column;
   }
   
-  .sidebar {
-    width: 100%;
-    height: auto;
-    position: relative;
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  
-  .sidebar.collapsed {
-    width: 100%;
-  }
-  
-  .sidebar-header {
-    width: 100%;
-    border-bottom: 1px solid #495057;
-    padding: 10px 20px;
-  }
-  
-  .sidebar.collapsed .sidebar-header {
-    padding: 10px 20px;
-  }
-  
-  .sidebar-header h2 {
-    margin: 0;
-  }
-  
-  .sidebar.collapsed .sidebar-header h2 {
-    margin: 0;
-  }
-  
-  .user-info {
-    position: absolute;
-    right: 20px;
-    top: 10px;
-    padding: 5px;
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 5px;
-  }
-  
-  .sidebar.collapsed .user-info {
-    position: absolute;
-    right: 20px;
-    top: 10px;
-    padding: 5px;
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 5px;
-  }
-  
-  .sidebar-nav {
-    width: 100%;
-    order: 3;
-  }
-  
-  .sidebar-nav ul {
-    display: flex;
-    flex-wrap: wrap;
-  }
-  
-  .sidebar-nav li {
-    flex: 1 1 auto;
-    min-width: 120px;
-    border-bottom: none;
-    border-right: 1px solid #495057;
-  }
-  
-  .sidebar-footer {
-    width: 100%;
-    padding: 10px 20px;
-    border-top: 1px solid #495057;
-    order: 2;
-  }
-  
-  .sidebar.collapsed .sidebar-footer {
-    padding: 10px 20px;
-  }
-  
   .main-content {
-    margin-left: 0;
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 15px;
   }
   
   .sidebar.collapsed ~ .main-content {
-    margin-left: 0;
+    margin-left: 0 !important;
   }
   
   .content {
-    padding: 10px;
+    padding: 15px 10px;
+  }
+  
+  table {
+    font-size: 0.9rem;
+  }
+  
+  button, .btn {
+    padding: 10px 15px;
+    font-size: 0.9rem;
+  }
+  
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+  
+  .stat-card, .analytics-card {
+    min-width: 150px;
   }
 }
 
 @media (max-width: 480px) {
-  .sidebar-nav ul {
+  .main-content {
+    padding: 10px;
+  }
+  
+  .content {
+    padding: 10px 5px;
+  }
+  
+  .analytics-header,
+  .members-header,
+  .payments-header {
     flex-direction: column;
+    gap: 10px;
   }
   
-  .sidebar-nav li {
-    border-right: none;
-    border-bottom: 1px solid #495057;
+  h1 {
+    font-size: 1.5rem;
   }
   
-  .user-info {
-    position: relative;
-    right: auto;
-    top: auto;
-    margin-top: 10px;
+  h2 {
+    font-size: 1.3rem;
   }
   
-  .sidebar.collapsed .user-info {
-    position: relative;
-    right: auto;
-    top: auto;
-    margin-top: 10px;
+  h3 {
+    font-size: 1.1rem;
   }
   
-  .sidebar-footer {
-    padding: 10px;
+  .stat-card h3 {
+    font-size: 24px !important;
   }
   
-  .sidebar.collapsed .sidebar-footer {
-    padding: 10px;
-  }
-  
-  .logout-btn {
-    padding: 8px;
-    font-size: 0.9rem;
-  }
-  
-  .sidebar.collapsed .logout-btn {
-    padding: 8px;
-    font-size: 0.9rem;
+  .stat-card p {
+    font-size: 14px !important;
   }
 }
 

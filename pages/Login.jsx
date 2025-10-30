@@ -23,6 +23,7 @@ const Login = ({ onLogin }) => {
   const [messageType, setMessageType] = useState('');
   const [messageText, setMessageText] = useState('');
   const [clubName, setClubName] = useState('Investment Club');
+  const [fetchingData, setFetchingData] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -76,9 +77,17 @@ const Login = ({ onLogin }) => {
       await auditService.logUserLogin(user.id);
       
       setMessageType('success');
-      setMessageText('Login successful! Redirecting...');
+      setMessageText('Login successful!');
       
+      // Show fetching data overlay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setShowMessage(false);
+      setFetchingData(true);
+      
+      // Wait for onLogin to complete
       await onLogin(user);
+      
+      // Navigate to dashboard after data is loaded
       navigate('/dashboard');
     } catch (err) {
       setMessageType('error');
@@ -206,6 +215,16 @@ const Login = ({ onLogin }) => {
             {messageType === 'error' && <span className="icon-error">✕</span>}
             {messageType === 'info' && <span className="icon-info">ℹ</span>}
             <p>{messageText}</p>
+          </div>
+        </div>
+      )}
+
+      {fetchingData && (
+        <div className="message-overlay" style={{ background: 'rgba(0, 0, 0, 0.9)' }}>
+          <div className="message-box message-loading" style={{ padding: '2rem 3rem' }}>
+            <span className="spinner" style={{ width: '40px', height: '40px', marginBottom: '1rem' }}></span>
+            <p style={{ fontSize: '1.2rem', margin: '0.5rem 0' }}>Fetching data from cloud...</p>
+            <p style={{ fontSize: '0.9rem', opacity: 0.7, margin: 0 }}>Please wait</p>
           </div>
         </div>
       )}

@@ -129,8 +129,9 @@ class AuthService {
   // Store user session
   storeSession(session, rememberMe = false) {
     try {
-      // Always use sessionStorage for auto-logout on browser close
-      sessionStorage.setItem('sb-session', JSON.stringify(session));
+      const storage = rememberMe ? localStorage : sessionStorage;
+      storage.setItem('sb-session', JSON.stringify(session));
+      storage.setItem('sb-remember', rememberMe.toString());
     } catch (error) {
       console.error('Failed to store session:', error);
     }
@@ -139,7 +140,9 @@ class AuthService {
   // Get stored session
   getSession() {
     try {
-      const session = sessionStorage.getItem('sb-session');
+      const isRemembered = localStorage.getItem('sb-remember') === 'true';
+      const storage = isRemembered ? localStorage : sessionStorage;
+      const session = storage.getItem('sb-session');
       return session ? JSON.parse(session) : null;
     } catch (error) {
       console.error('Failed to retrieve session:', error);
@@ -151,6 +154,9 @@ class AuthService {
   removeSession() {
     try {
       sessionStorage.removeItem('sb-session');
+      sessionStorage.removeItem('sb-remember');
+      localStorage.removeItem('sb-session');
+      localStorage.removeItem('sb-remember');
     } catch (error) {
       console.error('Failed to remove session:', error);
     }

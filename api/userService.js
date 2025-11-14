@@ -213,6 +213,21 @@ class UserService {
       return null;
     }
   }
+
+  async setTempPassword(userId, tempPassword) {
+    try {
+      const { data, error } = await supabase.rpc('set_temp_password', {
+        target_user_id: userId,
+        new_temp_password: tempPassword
+      });
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error setting temp password:', error);
+      throw error;
+    }
+  }
 }
 
 const userService = new UserService();

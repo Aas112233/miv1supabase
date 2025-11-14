@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FaUsers, FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
+import { FaUsers, FaMoneyBillWave, FaCreditCard, FaExclamationTriangle, FaClock } from 'react-icons/fa';
 import CurrencyBangladeshiIcon from '../components/CurrencyBangladeshiIcon';
 import { 
   LineChart, Line, BarChart, Bar, RadarChart, Radar, 
@@ -11,11 +11,14 @@ import useCountUp from '../hooks/useCountUp';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { parseDbDate, getMonthKey, getMonthName, formatDateDisplay } from '../utils/dateUtils';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../src/config/supabaseClient';
 import './Dashboard.css';
 
 const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
   const { t: translations } = useLanguage();
   const t = (key) => key.split('.').reduce((obj, k) => obj?.[k], translations) || key;
+  const { currentUser } = useAuth();
   
   const [stats, setStats] = useState({
     totalMembers: 0,
@@ -24,8 +27,11 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
     totalAmount: 0,
     totalExpenses: 0,
     activeProjects: 0,
-    netBalance: 0
+    netBalance: 0,
+    pendingRequests: 0
   });
+  
+  const [oldRequestsCount, setOldRequestsCount] = useState(0);
   
   const { startLoading, stopLoading, isLoading } = useLoading();
   
@@ -36,17 +42,57 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
   const animatedAmount = useCountUp(stats.totalAmount, 1500, 2);
   const animatedExpenses = useCountUp(stats.totalExpenses, 1500, 2);
   const animatedProjects = useCountUp(stats.activeProjects, 1000);
+  const animatedPendingRequests = useCountUp(stats.pendingRequests, 1000);
+
+  // Check for old transaction requests
+  useEffect(() => {
+    const checkOldRequests = async () => {
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      
+      const { data, error } = await supabase
+        .from('transaction_requests')
+        .select('id')
+        .eq('status', 'pending')
+        .lt('created_at', twentyFourHoursAgo);
+      
+      if (!error && data) {
+        console.log('Old requests found:', data.length);
+        setOldRequestsCount(data.length);
+      } else if (error) {
+        console.error('Error fetching old requests:', error);
+      }
+    };
+    
+    checkOldRequests();
+    
+    const subscription = supabase
+      .channel('old_requests_check')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transaction_requests' }, () => {
+        checkOldRequests();
+      })
+      .subscribe();
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Calculate stats with simulated loading
   useEffect(() => {
     startLoading('loadStats');
     
     // Simulate API call delay (2 seconds for skeleton)
-    setTimeout(() => {
+    setTimeout(async () => {
       const totalShares = members.reduce((sum, member) => sum + (member.shareAmount || 0), 0);
       const totalAmount = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
       const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
       const activeProjects = projects.filter(p => p.status === 'Active').length;
+      
+      // Fetch pending requests count
+      const { data: pendingData } = await supabase
+        .from('transaction_requests')
+        .select('id', { count: 'exact' })
+        .eq('status', 'pending');
       
       setStats({
         totalMembers: members.length,
@@ -55,7 +101,8 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
         totalAmount,
         totalExpenses,
         activeProjects,
-        netBalance: totalAmount - totalExpenses
+        netBalance: totalAmount - totalExpenses,
+        pendingRequests: pendingData?.length || 0
       });
       
       stopLoading('loadStats');
@@ -221,10 +268,19 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
         <h2>{t('dashboard.title')}</h2>
       </div>
 
+      {oldRequestsCount > 0 && (
+        <div className="alert-banner">
+          <FaExclamationTriangle className="alert-icon" />
+          <span className="alert-message">
+            {oldRequestsCount} transaction request{oldRequestsCount > 1 ? 's' : ''} pending for more than 24 hours. Please review and update.
+          </span>
+        </div>
+      )}
+
       {isLoading('loadStats') ? (
         <>
           <div className="dashboard-stats">
-            {[...Array(6)].map((_, i) => (
+            {[...Array(7)].map((_, i) => (
               <div key={i} className="skeleton skeleton-stat-card"></div>
             ))}
           </div>
@@ -302,6 +358,16 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
               <div className="stat-info">
                 <h3>{animatedProjects}</h3>
                 <p>{t('dashboard.activeProjects')}</p>
+              </div>
+            </div>
+            
+            <div className="stat-card">
+              <div className="stat-icon stat-icon--pending">
+                <FaClock />
+              </div>
+              <div className="stat-info">
+                <h3>{animatedPendingRequests}</h3>
+                <p>Pending Requests</p>
               </div>
             </div>
           </div>

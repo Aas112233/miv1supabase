@@ -32,6 +32,7 @@ const Expenses = ({ expenses, setExpenses, projects, currentUser }) => {
   const [members, setMembers] = useState([]);
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [projectCashiers, setProjectCashiers] = useState([]);
   
   const { addToast } = useToast();
   const { startLoading, stopLoading, isLoading } = useLoading();
@@ -39,6 +40,7 @@ const Expenses = ({ expenses, setExpenses, projects, currentUser }) => {
   useEffect(() => {
     loadFundsAndMembers();
     loadExpenseCategories();
+    loadProjectCashiers();
   }, []);
 
   const getFundName = (fundId) => {
@@ -69,6 +71,19 @@ const Expenses = ({ expenses, setExpenses, projects, currentUser }) => {
       setExpenseCategories(categories);
     } catch (error) {
       console.error('Error loading expense categories:', error);
+    }
+  };
+
+  const loadProjectCashiers = async () => {
+    try {
+      const projectsService = (await import('../api/projectsService')).default;
+      const allProjects = await projectsService.getAllProjects();
+      const uniqueCashiers = [...new Set(allProjects
+        .filter(p => p.project_cashier_name)
+        .map(p => p.project_cashier_name))];
+      setProjectCashiers(uniqueCashiers);
+    } catch (error) {
+      console.error('Error loading project cashiers:', error);
     }
   };
 
@@ -452,11 +467,22 @@ const Expenses = ({ expenses, setExpenses, projects, currentUser }) => {
                       className={fieldErrors.deductFrom ? 'input-error' : ''}
                     >
                       <option value="">{t('expenses.selectFund')}</option>
-                      {funds.map(fund => (
-                        <option key={fund.id} value={fund.id}>
-                          {fund.name} (৳{parseFloat(fund.current_balance || 0).toFixed(2)})
-                        </option>
-                      ))}
+                      <optgroup label="Savings Funds">
+                        {funds.map(fund => (
+                          <option key={fund.id} value={fund.id}>
+                            {fund.name} (৳{parseFloat(fund.current_balance || 0).toFixed(2)})
+                          </option>
+                        ))}
+                      </optgroup>
+                      {projectCashiers.length > 0 && (
+                        <optgroup label="Investment Funds">
+                          {projectCashiers.map(cashier => (
+                            <option key={`project_${cashier}`} value={`project_cashier:${cashier}`}>
+                              {cashier} (Investment Fund)
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
                     {fieldErrors.deductFrom && <span className="error-text">{fieldErrors.deductFrom}</span>}
                   </div>
@@ -618,11 +644,22 @@ const Expenses = ({ expenses, setExpenses, projects, currentUser }) => {
                       onChange={(e) => setDeductFrom(e.target.value)}
                     >
                       <option value="">Select Fund</option>
-                      {funds.map(fund => (
-                        <option key={fund.id} value={fund.id}>
-                          {fund.name} (৳{parseFloat(fund.current_balance || 0).toFixed(2)})
-                        </option>
-                      ))}
+                      <optgroup label="Savings Funds">
+                        {funds.map(fund => (
+                          <option key={fund.id} value={fund.id}>
+                            {fund.name} (৳{parseFloat(fund.current_balance || 0).toFixed(2)})
+                          </option>
+                        ))}
+                      </optgroup>
+                      {projectCashiers.length > 0 && (
+                        <optgroup label="Investment Funds">
+                          {projectCashiers.map(cashier => (
+                            <option key={`project_${cashier}`} value={`project_cashier:${cashier}`}>
+                              {cashier} (Investment Fund)
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
                   </div>
                 </div>

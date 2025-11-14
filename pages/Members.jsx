@@ -29,9 +29,14 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
   const [userPassword, setUserPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [assignExistingUser, setAssignExistingUser] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [availableUsers, setAvailableUsers] = useState([]);
   const [memberToDelete, setMemberToDelete] = useState(null);
   const [checkingLinks, setCheckingLinks] = useState(false);
   const [hasLinks, setHasLinks] = useState(false);
+  const [sortField, setSortField] = useState('id');
+  const [sortDirection, setSortDirection] = useState('asc');
   
   const { addToast } = useToast();
   const { startLoading, stopLoading, isLoading } = useLoading();
@@ -183,6 +188,12 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
       }
     }
     
+    // If assigning existing user, validate selection
+    if (assignExistingUser && !selectedUserId) {
+      addToast('Please select a user to assign', 'error');
+      return;
+    }
+    
     if (name && contact && shareAmount) {
       startLoading('editMember');
       
@@ -192,6 +203,11 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
           contact,
           shareAmount: parseInt(shareAmount)
         };
+        
+        // If assigning existing user
+        if (assignExistingUser && selectedUserId) {
+          updatedData.userId = selectedUserId;
+        }
         
         // If requested, create access user
         if (createAccessUser) {
@@ -232,6 +248,8 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
         setContact('');
         setShareAmount('');
         setCreateAccessUser(false);
+        setAssignExistingUser(false);
+        setSelectedUserId('');
         setUserEmail('');
         setUserPassword('');
         setConfirmPassword('');
@@ -261,14 +279,35 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
     setShareAmount(member.shareAmount.toString());
     
     // Check if member has assigned user
+    let hasValidUser = false;
     if (member.userId) {
       const userProfile = await userService.getUserProfile(member.userId);
       if (userProfile) {
         setUserEmail(userProfile.email);
+        hasValidUser = true;
+      } else {
+        // User was deleted, clear the userId from member
+        setUserEmail('');
+        // Update member to remove invalid userId
+        await membersService.updateMember(member.id, { userId: null });
+        // Update local state
+        const updatedMembers = members.map(m => 
+          m.id === member.id ? { ...m, userId: null } : m
+        );
+        setMembers(updatedMembers);
+        setEditingMember({ ...member, userId: null });
       }
     }
     
+    // Fetch available users (not assigned to any member)
+    const allUsers = await userService.getAllUsers();
+    const assignedUserIds = members.filter(m => m.userId).map(m => m.userId);
+    const unassignedUsers = allUsers.filter(u => !assignedUserIds.includes(u.id));
+    setAvailableUsers(unassignedUsers);
+    
     setCreateAccessUser(false);
+    setAssignExistingUser(false);
+    setSelectedUserId('');
     setUserPassword('');
     setConfirmPassword('');
     setShowEditForm(true);
@@ -327,6 +366,34 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
       .filter(p => p.memberId == memberId || p.member_id == memberId)
       .reduce((sum, p) => sum + p.amount, 0);
   };
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedMembers = [...members].sort((a, b) => {
+    let aVal = a[sortField];
+    let bVal = b[sortField];
+
+    if (sortField === 'balance') {
+      aVal = getMemberBalance(a.id);
+      bVal = getMemberBalance(b.id);
+    }
+
+    if (typeof aVal === 'string') {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   const handleViewDetails = async (member) => {
     setSelectedMember(member);
@@ -424,9 +491,8 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
         <div className="stat-card">
           <div className="stat-card-icon stat-card-icon--shares">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M12 7V12L15 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M16 16C16 16 14.5 14 12 14C9.5 14 8 16 8 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M21.21 15.89C20.5738 17.3945 19.5788 18.7202 18.3119 19.7513C17.0449 20.7824 15.5447 21.4874 13.9424 21.8048C12.3401 22.1221 10.6844 22.0421 9.12012 21.5718C7.55585 21.1014 6.13305 20.2551 4.96893 19.1067C3.80481 17.9582 2.93553 16.5428 2.43746 14.9839C1.93938 13.4251 1.83045 11.7705 2.11954 10.1646C2.40863 8.55878 3.08525 7.04946 4.09254 5.76477C5.09983 4.48008 6.40729 3.46284 7.89999 2.79999" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M22 12C22 10.6868 21.7413 9.38642 21.2388 8.17317C20.7362 6.95991 19.9997 5.85752 19.0711 4.92893C18.1425 4.00035 17.0401 3.26375 15.8268 2.7612C14.6136 2.25866 13.3132 2 12 2V12H22Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
           <div className="stat-card-content">
@@ -457,17 +523,29 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
           <table className="data-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>{t('members.name')}</th>
-                <th>{t('members.contact')}</th>
-                <th>{t('members.shareAmount')}</th>
-                <th>{t('members.totalBalance')}</th>
-                <th>{t('members.joinDate')}</th>
+                <th onClick={() => handleSort('id')} style={{ cursor: 'pointer' }}>
+                  ID {sortField === 'id' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th onClick={() => handleSort('name')} style={{ cursor: 'pointer' }}>
+                  {t('members.name')} {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th onClick={() => handleSort('contact')} style={{ cursor: 'pointer' }}>
+                  {t('members.contact')} {sortField === 'contact' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th onClick={() => handleSort('shareAmount')} style={{ cursor: 'pointer' }}>
+                  {t('members.shareAmount')} {sortField === 'shareAmount' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th onClick={() => handleSort('balance')} style={{ cursor: 'pointer' }}>
+                  {t('members.totalBalance')} {sortField === 'balance' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th onClick={() => handleSort('joinDate')} style={{ cursor: 'pointer' }}>
+                  {t('members.joinDate')} {sortField === 'joinDate' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
                 <th>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
-              {members.map((member) => (
+              {sortedMembers.map((member) => (
                 <tr key={member.id}>
                   <td>{member.id}</td>
                   <td className="member-name">{member.name}</td>
@@ -488,28 +566,32 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                           <circle cx="12" cy="8" r="1" fill="currentColor"/>
                         </svg>
                       </button>
-                      <button 
-                        className="btn btn--icon btn--secondary" 
-                        title="Edit Member"
-                        onClick={() => handleEdit(member)}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                      <button 
-                        className="btn btn--icon btn--danger" 
-                        title="Delete Member"
-                        onClick={() => handleDelete(member.id)}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M3 6H5H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M10 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M14 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
+                      {hasWritePermission(currentUser, 'members') && (
+                        <>
+                          <button 
+                            className="btn btn--icon btn--secondary" 
+                            title="Edit Member"
+                            onClick={() => handleEdit(member)}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                          <button 
+                            className="btn btn--icon btn--danger" 
+                            title="Delete Member"
+                            onClick={() => handleDelete(member.id)}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M3 6H5H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M10 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M14 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -746,8 +828,8 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                 </div>
               </div>
               
-              {/* Show assigned user or option to create access user */}
-              {editingMember?.userId ? (
+              {/* Show assigned user or option to create/assign access user */}
+              {editingMember?.userId && userEmail ? (
                 <div className="form-group">
                   <label>Assigned User Account</label>
                   <div style={{ padding: '10px', backgroundColor: '#f0f9ff', border: '1px solid #0ea5e9', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -760,16 +842,59 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                   <div className="form-hint">This member has an assigned user account. Manage it from User Management screen.</div>
                 </div>
               ) : (
-                <div className="form-group checkbox-container">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={createAccessUser}
-                      onChange={(e) => setCreateAccessUser(e.target.checked)}
-                    />
-                    Create access user for this member
-                  </label>
-                </div>
+                <>
+                  <div className="form-group checkbox-container">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={assignExistingUser}
+                        onChange={(e) => {
+                          setAssignExistingUser(e.target.checked);
+                          if (e.target.checked) setCreateAccessUser(false);
+                        }}
+                      />
+                      Assign existing user
+                    </label>
+                  </div>
+                  
+                  {assignExistingUser && (
+                    <div className="form-group">
+                      <label htmlFor="selectUser">Select User *</label>
+                      <select
+                        id="selectUser"
+                        value={selectedUserId}
+                        onChange={(e) => setSelectedUserId(e.target.value)}
+                        required={assignExistingUser}
+                      >
+                        <option value="">-- Select a user --</option>
+                        {availableUsers.map(user => (
+                          <option key={user.id} value={user.id}>
+                            {user.name} ({user.email})
+                          </option>
+                        ))}
+                      </select>
+                      {availableUsers.length === 0 && (
+                        <div className="form-hint" style={{ color: '#f59e0b' }}>
+                          No unassigned users available. Create a new user instead.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="form-group checkbox-container">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={createAccessUser}
+                        onChange={(e) => {
+                          setCreateAccessUser(e.target.checked);
+                          if (e.target.checked) setAssignExistingUser(false);
+                        }}
+                      />
+                      Create new access user
+                    </label>
+                  </div>
+                </>
               )}
               
               {/* User credentials fields - only show if no user is assigned */}
@@ -829,13 +954,15 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                         name === originalMemberData?.name &&
                         contact === originalMemberData?.contact &&
                         shareAmount === originalMemberData?.shareAmount &&
-                        !createAccessUser
+                        !createAccessUser &&
+                        !assignExistingUser
                       }
                       title={
                         name === originalMemberData?.name &&
                         contact === originalMemberData?.contact &&
                         shareAmount === originalMemberData?.shareAmount &&
-                        !createAccessUser
+                        !createAccessUser &&
+                        !assignExistingUser
                           ? 'Change data to update member'
                           : ''
                       }

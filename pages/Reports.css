@@ -138,6 +138,26 @@ body.theme-dark .report-content {
   border-bottom: 2px solid #e9ecef;
 }
 
+.export-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.export-controls select {
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #ced4da;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+body.theme-dark .export-controls select {
+  background-color: #2d2d2d;
+  color: #e9ecef;
+  border-color: #495057;
+}
+
 body.theme-dark .report-header {
   border-bottom-color: #343a40;
 }

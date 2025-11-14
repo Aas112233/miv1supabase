@@ -145,6 +145,16 @@ body.theme-dark .data-table tbody tr:hover {
   color: #dc3545;
 }
 
+.role-badge--manager {
+  background-color: rgba(255, 193, 7, 0.15);
+  color: #ff9800;
+}
+
+.role-badge--accountant {
+  background-color: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+}
+
 .role-badge--member {
   background-color: rgba(0, 123, 255, 0.15);
   color: #007bff;
@@ -153,6 +163,16 @@ body.theme-dark .data-table tbody tr:hover {
 body.theme-dark .role-badge--admin {
   background-color: rgba(220, 53, 69, 0.25);
   color: #ff6b6b;
+}
+
+body.theme-dark .role-badge--manager {
+  background-color: rgba(255, 193, 7, 0.25);
+  color: #ffb74d;
+}
+
+body.theme-dark .role-badge--accountant {
+  background-color: rgba(76, 175, 80, 0.25);
+  color: #81c784;
 }
 
 body.theme-dark .role-badge--member {
@@ -493,6 +513,40 @@ body.theme-dark .btn--secondary {
 
 body.theme-dark .btn--secondary:hover {
   background-color: #343a40;
+}
+
+.btn--danger {
+  color: white;
+  background-color: #dc3545;
+}
+
+.btn--danger:hover {
+  background-color: #c82333;
+}
+
+.btn--info {
+  color: white;
+  background-color: #17a2b8;
+}
+
+.btn--info:hover {
+  background-color: #138496;
+}
+
+.btn--success {
+  color: white;
+  background-color: #28a745;
+}
+
+.btn--success:hover {
+  background-color: #218838;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .form-group input,

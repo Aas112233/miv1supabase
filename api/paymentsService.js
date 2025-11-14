@@ -69,7 +69,9 @@ class PaymentsService {
           payment_date: paymentData.paymentDate,
           payment_method: paymentData.paymentMethod,
           description: paymentData.paymentMonth,
-          cashier_name: paymentData.cashierName
+          cashier_name: paymentData.cashierName,
+          receipt_url: paymentData.receiptUrl || null,
+          status: paymentData.status || 'completed'
         }])
         .select()
         .single();
@@ -98,7 +100,8 @@ class PaymentsService {
           payment_date: paymentData.paymentDate,
           payment_method: paymentData.paymentMethod,
           description: paymentData.paymentMonth,
-          cashier_name: paymentData.cashierName
+          cashier_name: paymentData.cashierName,
+          receipt_url: paymentData.receiptUrl || null
         })
         .eq('id', id)
         .select()

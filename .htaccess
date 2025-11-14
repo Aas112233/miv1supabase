@@ -5,9 +5,13 @@
   RewriteEngine On
   RewriteBase /
 
-  # Force HTTPS (uncomment if using SSL)
-  # RewriteCond %{HTTPS} off
-  # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+  # Force HTTPS - Redirect all HTTP traffic to HTTPS
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+  
+  # Force www to non-www (or vice versa if needed)
+  RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+  RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
 
   # Handle React Router - redirect all requests to index.html
   RewriteRule ^index\.html$ - [L]
@@ -92,10 +96,10 @@ Options -Indexes
   Deny from all
 </FilesMatch>
 
-# Allow access to .well-known (for SSL certificates)
+# Allow access to .well-known (for SSL certificates and verification)
 <IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteCond %{REQUEST_URI} !^/\.well-known/
+  RewriteCond %{REQUEST_URI} ^/\.well-known/ [NC]
+  RewriteRule ^ - [L]
 </IfModule>
 
 # Error Documents (optional)

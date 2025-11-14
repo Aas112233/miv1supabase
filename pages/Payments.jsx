@@ -4,6 +4,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import useLoading from '../hooks/useLoading';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { hasWritePermission } from '../components/PermissionChecker';
+import CloudinaryUpload from '../components/CloudinaryUpload';
 import paymentsService from '../api/paymentsService';
 import masterDataService from '../api/masterDataService';
 import { getUserFriendlyError } from '../src/utils/errorHandler';
@@ -23,10 +24,14 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
   const [paymentDate, setPaymentDate] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [cashierName, setCashierName] = useState('');
+  const [receiptUrl, setReceiptUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [cashierNames, setCashierNames] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const [sortField, setSortField] = useState('id');
+  const [sortDirection, setSortDirection] = useState('desc');
   const autocompleteRef = useRef(null);
   
   const { addToast } = useToast();
@@ -192,7 +197,8 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
           paymentMonth,
           paymentDate,
           paymentMethod,
-          cashierName
+          cashierName,
+          receiptUrl
         };
         
         const createdPayment = await paymentsService.createPayment(newPayment);
@@ -213,6 +219,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
         setPaymentDate('');
         setPaymentMethod('');
         setCashierName('');
+        setReceiptUrl('');
         setShowForm(false);
         
         // Show success toast
@@ -237,6 +244,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
     setPaymentDate(payment.payment_date || payment.paymentDate);
     setPaymentMethod(payment.payment_method || payment.paymentMethod);
     setCashierName(payment.cashier_name || payment.cashierName);
+    setReceiptUrl(payment.receipt_url || '');
     setShowEditForm(true);
   };
 
@@ -257,7 +265,8 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
         paymentMonth,
         paymentDate,
         paymentMethod,
-        cashierName
+        cashierName,
+        receiptUrl
       };
       
       await paymentsService.updatePayment(editingPayment.id, updatedPayment);
@@ -277,6 +286,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
       setPaymentDate('');
       setPaymentMethod('');
       setCashierName('');
+      setReceiptUrl('');
       setShowEditForm(false);
       setEditingPayment(null);
       
@@ -302,6 +312,43 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
 
   const totalPayments = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const totalTransactions = payments.length;
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedPayments = [...payments].sort((a, b) => {
+    let aVal = a[sortField];
+    let bVal = b[sortField];
+
+    if (sortField === 'paymentDate') {
+      aVal = a.payment_date || a.paymentDate;
+      bVal = b.payment_date || b.paymentDate;
+    } else if (sortField === 'paymentMonth') {
+      aVal = a.description || a.paymentMonth;
+      bVal = b.description || b.paymentMonth;
+    } else if (sortField === 'paymentMethod') {
+      aVal = a.payment_method || a.paymentMethod;
+      bVal = b.payment_method || b.paymentMethod;
+    } else if (sortField === 'cashierName') {
+      aVal = a.cashier_name || a.cashierName;
+      bVal = b.cashier_name || b.cashierName;
+    }
+
+    if (typeof aVal === 'string') {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   if (isLoading('paymentsData')) {
     return (
@@ -339,6 +386,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
               setPaymentDate('');
               setPaymentMethod('');
               setCashierName('');
+              setReceiptUrl('');
               setShowForm(true);
             }}
           >
@@ -363,19 +411,36 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
         <table className="data-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>{t('payments.member')}</th>
-              <th>{t('payments.amount')}</th>
-              <th>{t('payments.month')}</th>
-              <th>{t('payments.date')}</th>
-              <th>{t('payments.method')}</th>
-              <th>{t('payments.cashier')}</th>
-              <th>{t('payments.status')}</th>
+              <th onClick={() => handleSort('id')} style={{ cursor: 'pointer' }}>
+                ID {sortField === 'id' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleSort('memberName')} style={{ cursor: 'pointer' }}>
+                {t('payments.member')} {sortField === 'memberName' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleSort('amount')} style={{ cursor: 'pointer' }}>
+                {t('payments.amount')} {sortField === 'amount' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleSort('paymentMonth')} style={{ cursor: 'pointer' }}>
+                {t('payments.month')} {sortField === 'paymentMonth' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleSort('paymentDate')} style={{ cursor: 'pointer' }}>
+                {t('payments.date')} {sortField === 'paymentDate' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleSort('paymentMethod')} style={{ cursor: 'pointer' }}>
+                {t('payments.method')} {sortField === 'paymentMethod' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleSort('cashierName')} style={{ cursor: 'pointer' }}>
+                {t('payments.cashier')} {sortField === 'cashierName' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleSort('status')} style={{ cursor: 'pointer' }}>
+                {t('payments.status')} {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th>Receipt</th>
               <th>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
-            {payments.map((payment) => (
+            {sortedPayments.map((payment) => (
               <tr key={payment.id}>
                 <td>{payment.id}</td>
                 <td>{payment.memberName}</td>
@@ -388,6 +453,25 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                   <span className={`status-badge status-badge--${payment.status}`}>
                     {t(`payments.${payment.status}`)}
                   </span>
+                </td>
+                <td>
+                  {payment.receipt_url ? (
+                    <a 
+                      href={payment.receipt_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="btn btn--icon btn--view"
+                      title="View Receipt"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span>View</span>
+                    </a>
+                  ) : (
+                    <span style={{color: '#999', fontSize: '0.85rem'}}>No receipt</span>
+                  )}
                 </td>
                 <td>
                   {hasWritePermission(currentUser, 'payments') && (
@@ -570,6 +654,20 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                     </select>
                   </div>
                 </div>
+                
+                <div className="form-group">
+                  <label>Receipt/Proof (Optional)</label>
+                  <CloudinaryUpload 
+                    onUploadSuccess={(url) => setReceiptUrl(url)}
+                    onUploadError={(error) => addToast(error, 'error')}
+                    onUploadStart={(uploading) => setIsUploading(uploading)}
+                    customFilename={memberId && paymentMonth ? 
+                      `receipt_${members.find(m => m.id == memberId)?.name.replace(/\s+/g, '_')}_${paymentMonth.replace(/\s+/g, '_')}` 
+                      : null
+                    }
+                  />
+                  <div className="form-hint">Upload payment receipt or proof (JPG, PNG, PDF)</div>
+                </div>
               </div>
               
               <div className="form-actions">
@@ -577,7 +675,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                   <LoadingSpinner size="small" />
                 ) : (
                   <>
-                    <button type="submit" className="btn btn--primary">
+                    <button type="submit" className="btn btn--primary" disabled={isUploading}>
                       {t('payments.addPayment')}
                     </button>
                     <button 
@@ -703,6 +801,21 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                     </select>
                   </div>
                 </div>
+                
+                <div className="form-group">
+                  <label>Receipt/Proof (Optional)</label>
+                  <CloudinaryUpload 
+                    onUploadSuccess={(url) => setReceiptUrl(url)}
+                    onUploadError={(error) => addToast(error, 'error')}
+                    onUploadStart={(uploading) => setIsUploading(uploading)}
+                    customFilename={memberId && paymentMonth ? 
+                      `receipt_${members.find(m => m.id == memberId)?.name.replace(/\s+/g, '_')}_${paymentMonth.replace(/\s+/g, '_')}` 
+                      : null
+                    }
+                    existingUrl={receiptUrl}
+                  />
+                  <div className="form-hint">Upload payment receipt or proof (JPG, PNG, PDF)</div>
+                </div>
               </div>
               
               <div className="form-actions">
@@ -710,7 +823,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                   <LoadingSpinner size="small" />
                 ) : (
                   <>
-                    <button type="submit" className="btn btn--primary">
+                    <button type="submit" className="btn btn--primary" disabled={isUploading}>
                       {t('common.update')}
                     </button>
                     <button 

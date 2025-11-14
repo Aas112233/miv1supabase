@@ -54,7 +54,7 @@ const App = () => {
   const [goals, setGoals] = useState([]);
   const [theme, setTheme] = useLocalStorage('theme', 'light');
   const [loading, setLoading] = useState(true);
-  const [showTerminatedModal, setShowTerminatedModal] = useState(false);
+  const [sessionTerminated, setSessionTerminated] = useState(false);
 
   // Apply theme to body class
   useEffect(() => {
@@ -65,17 +65,69 @@ const App = () => {
   useEffect(() => {
     if (!isLoggedIn) return;
 
-    const intervalId = sessionService.startSessionMonitoring(() => {
-      setShowTerminatedModal(true);
+    const intervalId = sessionService.startSessionMonitoring(async () => {
+      // Immediately logout when session is terminated
+      await handleLogout();
+      setSessionTerminated(true);
     });
 
     return () => sessionService.stopSessionMonitoring(intervalId);
   }, [isLoggedIn]);
 
-  const handleSessionTerminated = async () => {
-    setShowTerminatedModal(false);
-    await handleLogout();
-  };
+
+
+  // Setup realtime subscriptions for data changes
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const membersChannel = supabase
+      .channel('members-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, async () => {
+        const data = await membersService.getAllMembers();
+        setMembers(data || []);
+      })
+      .subscribe();
+
+    const paymentsChannel = supabase
+      .channel('payments-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, async () => {
+        const data = await paymentsService.getAllPayments();
+        setPayments(data || []);
+      })
+      .subscribe();
+
+    const expensesChannel = supabase
+      .channel('expenses-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, async () => {
+        const data = await expensesService.getAllExpenses();
+        setExpenses(data || []);
+      })
+      .subscribe();
+
+    const projectsChannel = supabase
+      .channel('projects-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, async () => {
+        const data = await projectsService.getAllProjects();
+        setProjects(data || []);
+      })
+      .subscribe();
+
+    const requestsChannel = supabase
+      .channel('requests-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transaction_requests' }, async () => {
+        const data = await transactionRequestsService.getAllRequests();
+        setRequests(data || []);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(membersChannel);
+      supabase.removeChannel(paymentsChannel);
+      supabase.removeChannel(expensesChannel);
+      supabase.removeChannel(projectsChannel);
+      supabase.removeChannel(requestsChannel);
+    };
+  }, [isLoggedIn]);
 
   // Check for existing session on app load
   useEffect(() => {
@@ -196,29 +248,9 @@ const App = () => {
   return (
     <ErrorBoundary>
       <OfflineIndicator />
-      {showTerminatedModal && (
-        <div className="overlay" style={{ zIndex: 10000 }}>
-          <div className="overlay-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
-            <div style={{ padding: '30px' }}>
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 20px', color: '#ef4444' }}>
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                <path d="M15 9L9 15M9 9L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-              <h2 style={{ marginBottom: '15px', color: '#1f2937' }}>Session Terminated</h2>
-              <p style={{ marginBottom: '25px', color: '#6b7280' }}>Your session has been terminated by an administrator. You will be logged out.</p>
-              <button 
-                className="btn btn--primary"
-                onClick={handleSessionTerminated}
-                style={{ width: '100%' }}
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
       <ToastProvider>
-        <Router>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <KeyboardShortcutsWrapper>
         {isLoggedIn && <KeyboardShortcutsHelp />}
         <div className={`app ${isLoggedIn ? '' : 'login-page'} ${theme === 'dark' ? 'theme-dark' : 'theme-light'}`}>
@@ -305,7 +337,7 @@ const App = () => {
                   <Route 
                     path="/master-data" 
                     element={
-                      <ProtectedRoute currentUser={currentUser} screenName="settings">
+                      <ProtectedRoute currentUser={currentUser} screenName="master_data">
                         <MasterData currentUser={currentUser} />
                       </ProtectedRoute>
                     } 
@@ -355,7 +387,7 @@ const App = () => {
                   <Route 
                     path="/budget" 
                     element={
-                      <ProtectedRoute currentUser={currentUser} screenName="budget">
+                      <ProtectedRoute currentUser={currentUser} screenName="goals">
                         <Goals 
                           members={members} 
                           payments={payments} 
@@ -384,7 +416,7 @@ const App = () => {
           </>
         ) : (
           <Routes>
-            <Route path="/login" element={<Login onLogin={handleLogin} />}/>
+            <Route path="/login" element={<Login onLogin={handleLogin} sessionTerminated={sessionTerminated} setSessionTerminated={setSessionTerminated} />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         )}

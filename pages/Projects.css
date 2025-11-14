@@ -278,7 +278,7 @@ body.theme-dark .financial-label {
 
 .tabs {
   display: flex;
-  gap: 10px;
+  gap: 5px;
   margin-bottom: 20px;
   border-bottom: 2px solid var(--border-color);
 }
@@ -293,6 +293,8 @@ body.theme-dark .financial-label {
   font-weight: 500;
   color: #666;
   transition: all 0.3s;
+  border-radius: 8px 8px 0 0;
+  position: relative;
 }
 
 body.theme-dark .tab {
@@ -307,11 +309,19 @@ body.theme-dark .tab {
 .tab--active {
   color: #007bff;
   border-bottom-color: #007bff;
+  font-weight: 600;
+}
+
+body.theme-light .tab--active {
+  background: rgba(108, 117, 125, 0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 body.theme-dark .tab--active {
   color: #1976d2;
   border-bottom-color: #1976d2;
+  background: rgba(52, 152, 219, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .analysis-content {

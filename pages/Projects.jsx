@@ -31,9 +31,10 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
   const [assignedMemberId, setAssignedMemberId] = useState('');
   const [progressPercentage, setProgressPercentage] = useState(0);
   const [involvedMemberIds, setInvolvedMemberIds] = useState([]);
-  const [initialInvestment, setInitialInvestment] = useState('');
-  const [monthlyRevenue, setMonthlyRevenue] = useState('');
+  const [investmentLimit, setInvestmentLimit] = useState('');
+  const [projectCashierName, setProjectCashierName] = useState('');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [cashiers, setCashiers] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [projectFinancials, setProjectFinancials] = useState(null);
   const [projectMembers, setProjectMembers] = useState([]);
@@ -43,9 +44,9 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showInvestmentForm, setShowInvestmentForm] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState('');
-  const [selectedMemberId, setSelectedMemberId] = useState('');
-  const [investmentAmount, setInvestmentAmount] = useState('');
+  const [memberInvestments, setMemberInvestments] = useState({});
   const [investmentDate, setInvestmentDate] = useState('');
+  const [deductedFromCashier, setDeductedFromCashier] = useState('');
   const [showRevenueForm, setShowRevenueForm] = useState(false);
   const [revenueProjectId, setRevenueProjectId] = useState('');
   const [revenueAmount, setRevenueAmount] = useState('');
@@ -72,10 +73,22 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
 
   useEffect(() => {
     startLoading('projectsData');
+    loadCashiers();
     setTimeout(() => {
       stopLoading('projectsData');
     }, 2000);
   }, []);
+
+  const loadCashiers = async () => {
+    try {
+      const masterDataService = (await import('../api/masterDataService')).default;
+      const cashierData = await masterDataService.getMasterDataByCategory('cashier_name');
+      setCashiers(cashierData || []);
+    } catch (error) {
+      console.error('Failed to load cashiers:', error);
+      setCashiers([]);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -98,8 +111,8 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
         assignedMemberId: assignedMemberId || null,
         progressPercentage,
         involvedMemberIds,
-        initialInvestment: parseFloat(initialInvestment) || 0,
-        monthlyRevenue: parseFloat(monthlyRevenue) || 0
+        investmentLimit: parseFloat(investmentLimit) || 0,
+        projectCashierName
       };
       
       const createdProject = await projectsService.createProject(newProject);
@@ -124,8 +137,8 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
     setStatus(project.status);
     setAssignedMemberId(project.assigned_member_id || '');
     setProgressPercentage(project.progress_percentage || 0);
-    setInitialInvestment(project.initial_investment || '');
-    setMonthlyRevenue(project.monthly_revenue || '');
+    setInvestmentLimit(project.investment_limit || '');
+    setProjectCashierName(project.project_cashier_name || '');
     
     try {
       const projectMembers = await projectsService.getProjectMembers(project.id);
@@ -158,8 +171,8 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
         assignedMemberId: assignedMemberId || null,
         progressPercentage,
         involvedMemberIds,
-        initialInvestment: parseFloat(initialInvestment) || 0,
-        monthlyRevenue: parseFloat(monthlyRevenue) || 0
+        investmentLimit: parseFloat(investmentLimit) || 0,
+        projectCashierName
       };
       
       await projectsService.updateProject(editingProject.id, updatedProject);
@@ -218,8 +231,8 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
     setAssignedMemberId('');
     setProgressPercentage(0);
     setInvolvedMemberIds([]);
-    setInitialInvestment('');
-    setMonthlyRevenue('');
+    setInvestmentLimit('');
+    setProjectCashierName('');
   };
 
   const toggleMemberSelection = (memberId) => {
@@ -359,26 +372,30 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
 
   const handleAddInvestment = async (e) => {
     e.preventDefault();
-    if (!selectedProjectId || !selectedMemberId || !investmentAmount || !investmentDate) {
-      addToast('Please fill in all required fields', 'error');
+    const selectedMembers = Object.entries(memberInvestments).filter(([_, shares]) => shares > 0);
+    if (!selectedProjectId || selectedMembers.length === 0 || !investmentDate || !deductedFromCashier) {
+      addToast('Please fill in all required fields and select at least one member with shares', 'error');
       return;
     }
     
     startLoading('addInvestment');
     try {
-      await projectsService.addProjectInvestment({
-        projectId: parseInt(selectedProjectId),
-        memberId: parseInt(selectedMemberId),
-        amount: parseFloat(investmentAmount),
-        investmentDate
-      });
+      for (const [memberId, shares] of selectedMembers) {
+        await projectsService.addProjectInvestment({
+          projectId: parseInt(selectedProjectId),
+          memberId: parseInt(memberId),
+          shares: parseInt(shares),
+          deductedFromCashier,
+          investmentDate
+        });
+      }
       await loadInvestments();
       setSelectedProjectId('');
-      setSelectedMemberId('');
-      setInvestmentAmount('');
+      setMemberInvestments({});
+      setDeductedFromCashier('');
       setInvestmentDate('');
       setShowInvestmentForm(false);
-      addToast('Investment added successfully!', 'success');
+      addToast(`Investment added for ${selectedMembers.length} member(s) successfully!`, 'success');
     } catch (error) {
       addToast(getUserFriendlyError(error), 'error');
     } finally {
@@ -613,40 +630,40 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
               </td>
               <td>{project.start_date}</td>
               <td>{project.end_date || 'N/A'}</td>
-              <td>{project.assigned_member?.name || 'Unassigned'}</td>
+              <td>{project.assigned_member?.name || t('projects.unassigned')}</td>
               <td>
                 <div className="action-buttons">
                   <button 
                     className="btn btn--icon btn--info" 
-                    title="Calculator"
+                    title={t('projects.calculator')}
                     onClick={() => handleOpenCalculator(project)}
                   >
-                    <span>Calc</span>
+                    <span>{t('projects.calculator')}</span>
                   </button>
                   {project.status === 'Completed' && (
                     <button 
                       className="btn btn--icon btn--primary" 
-                      title="Completion Report"
+                      title={t('projects.completionReport')}
                       onClick={() => handleGenerateReport(project)}
                     >
-                      <span>Report</span>
+                      <span>{t('projects.completionReport')}</span>
                     </button>
                   )}
                   {hasWritePermission(currentUser, 'projects') && (
                     <>
                       <button 
                         className="btn btn--icon btn--secondary" 
-                        title="Edit Project"
+                        title={t('common.edit')}
                         onClick={() => handleEdit(project)}
                       >
-                        <span>Edit</span>
+                        <span>{t('common.edit')}</span>
                       </button>
                       <button 
                         className="btn btn--icon btn--danger" 
-                        title="Delete Project"
+                        title={t('common.delete')}
                         onClick={() => handleDelete(project.id)}
                       >
-                        <span>Delete</span>
+                        <span>{t('common.delete')}</span>
                       </button>
                     </>
                   )}
@@ -670,7 +687,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
       <div className="investments-tab">
         {hasWritePermission(currentUser, 'projects') && (
           <div className="tab-actions">
-            <button className="btn btn--primary" onClick={() => setShowInvestmentForm(true)}>Add Investment</button>
+            <button className="btn btn--primary" onClick={() => setShowInvestmentForm(true)}>{t('projects.addInvestment')}</button>
           </div>
         )}
         <div className="investments-list">
@@ -680,12 +697,14 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Project</th>
-                  <th>Member</th>
-                  <th>Amount</th>
-                  <th>Date</th>
-                  <th>Percentage</th>
-                  {hasWritePermission(currentUser, 'projects') && <th>Actions</th>}
+                  <th>{t('projects.project')}</th>
+                  <th>{t('projects.member')}</th>
+                  <th>{t('projects.shares')}</th>
+                  <th>{t('projects.amount')}</th>
+                  <th>{t('projects.deductedFrom')}</th>
+                  <th>{t('projects.date')}</th>
+                  <th>{t('projects.percentage')}</th>
+                  {hasWritePermission(currentUser, 'projects') && <th>{t('common.actions')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -693,7 +712,9 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                   <tr key={inv.id}>
                     <td>{inv.project_name}</td>
                     <td>{inv.member?.name || 'N/A'}</td>
+                    <td>{inv.shares || 'N/A'}</td>
                     <td>৳{parseFloat(inv.amount).toFixed(2)}</td>
+                    <td>{inv.deducted_from_cashier || 'N/A'}</td>
                     <td>{inv.investment_date}</td>
                     <td>{inv.investment_percentage ? `${parseFloat(inv.investment_percentage).toFixed(2)}%` : 'N/A'}</td>
                     {hasWritePermission(currentUser, 'projects') && (
@@ -701,9 +722,9 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                         <button 
                           className="btn btn--icon btn--danger" 
                           onClick={() => handleDeleteInvestment(inv.id)}
-                          title="Delete Investment"
+                          title={t('common.delete')}
                         >
-                          Delete
+                          {t('common.delete')}
                         </button>
                       </td>
                     )}
@@ -727,7 +748,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
       <div className="revenues-tab">
         {hasWritePermission(currentUser, 'projects') && (
           <div className="tab-actions">
-            <button className="btn btn--primary" onClick={() => setShowRevenueForm(true)}>Add Revenue</button>
+            <button className="btn btn--primary" onClick={() => setShowRevenueForm(true)}>{t('projects.addRevenue')}</button>
           </div>
         )}
         <div className="revenues-list">
@@ -737,11 +758,11 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
             <table className="data-table">
             <thead>
               <tr>
-                <th>Project</th>
-                <th>Amount</th>
-                <th>Date</th>
-                <th>Description</th>
-                {hasWritePermission(currentUser, 'projects') && <th>Actions</th>}
+                <th>{t('projects.project')}</th>
+                <th>{t('projects.amount')}</th>
+                <th>{t('projects.date')}</th>
+                <th>{t('projects.description')}</th>
+                {hasWritePermission(currentUser, 'projects') && <th>{t('common.actions')}</th>}
               </tr>
             </thead>
             <tbody>
@@ -756,9 +777,9 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                       <button 
                         className="btn btn--icon btn--danger" 
                         onClick={() => handleDeleteRevenue(rev.id)}
-                        title="Delete Revenue"
+                        title={t('common.delete')}
                       >
-                        Delete
+                        {t('common.delete')}
                       </button>
                     </td>
                   )}
@@ -786,7 +807,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
               className="btn btn--primary" 
               onClick={() => navigate('/expenses')}
             >
-              Add Expense
+              {t('projects.addExpense')}
             </button>
           </div>
         )}
@@ -797,12 +818,12 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Project</th>
-                  <th>Reason</th>
-                  <th>Amount</th>
-                  <th>Date</th>
-                  <th>Expense By</th>
-                  <th>Category</th>
+                  <th>{t('projects.project')}</th>
+                  <th>{t('projects.reason')}</th>
+                  <th>{t('projects.amount')}</th>
+                  <th>{t('projects.date')}</th>
+                  <th>{t('projects.expenseBy')}</th>
+                  <th>{t('expenses.category')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -820,7 +841,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                 ) : (
                   <tr>
                     <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>
-                      No project expenses found. Expenses are managed from the Expenses page.
+                      {t('projects.noExpenses')}
                     </td>
                   </tr>
                 )}
@@ -830,7 +851,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
         </div>
         <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f0f9ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
           <p style={{ margin: 0, color: '#1e40af' }}>
-            <strong>Note:</strong> To add or manage project expenses, please go to the Expenses page and link them to a project.
+            <strong>{t('common.note')}:</strong> {t('projects.expenseNote')}
           </p>
         </div>
       </div>
@@ -848,7 +869,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
       <div className="monthly-tab">
         {hasWritePermission(currentUser, 'projects') && (
           <div className="tab-actions">
-            <button className="btn btn--primary" onClick={() => { resetMonthlyForm(); setShowMonthlyForm(true); }}>Add Monthly Update</button>
+            <button className="btn btn--primary" onClick={() => { resetMonthlyForm(); setShowMonthlyForm(true); }}>{t('projects.addMonthlyUpdate')}</button>
           </div>
         )}
         <div className="monthly-list">
@@ -858,13 +879,13 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Project</th>
-                  <th>Period</th>
-                  <th>Revenue</th>
-                  <th>Expenses</th>
-                  <th>Net Profit/Loss</th>
-                  <th>Notes</th>
-                  {hasWritePermission(currentUser, 'projects') && <th>Actions</th>}
+                  <th>{t('projects.project')}</th>
+                  <th>{t('projects.period')}</th>
+                  <th>{t('projects.revenue')}</th>
+                  <th>{t('projects.expenses')}</th>
+                  <th>{t('projects.netProfitLoss')}</th>
+                  <th>{t('projects.notes')}</th>
+                  {hasWritePermission(currentUser, 'projects') && <th>{t('common.actions')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -881,8 +902,8 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                     {hasWritePermission(currentUser, 'projects') && (
                       <td>
                         <div className="action-buttons">
-                          <button className="btn btn--icon btn--secondary" onClick={() => handleEditMonthly(m)}>Edit</button>
-                          <button className="btn btn--icon btn--danger" onClick={() => handleDeleteMonthly(m.id)}>Delete</button>
+                          <button className="btn btn--icon btn--secondary" onClick={() => handleEditMonthly(m)}>{t('common.edit')}</button>
+                          <button className="btn btn--icon btn--danger" onClick={() => handleDeleteMonthly(m.id)}>{t('common.delete')}</button>
                         </div>
                       </td>
                     )}
@@ -910,19 +931,19 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
       <div className="analysis-content">
         <div className="analysis-cards">
           <div className="analysis-card">
-            <div className="analysis-label">Total Investment</div>
+            <div className="analysis-label">{t('projects.totalInvestment')}</div>
             <div className="analysis-value">৳{totalInvestment.toFixed(2)}</div>
           </div>
           <div className="analysis-card">
-            <div className="analysis-label">Active Projects</div>
+            <div className="analysis-label">{t('projects.activeProjects')}</div>
             <div className="analysis-value">{activeProjects.length}</div>
           </div>
           <div className="analysis-card">
-            <div className="analysis-label">Completed Projects</div>
+            <div className="analysis-label">{t('projects.completedProjects')}</div>
             <div className="analysis-value">{completedProjects.length}</div>
           </div>
           <div className="analysis-card">
-            <div className="analysis-label">Success Rate</div>
+            <div className="analysis-label">{t('projects.successRate')}</div>
             <div className="analysis-value">
               {filteredProjects.length > 0 ? ((completedProjects.length / filteredProjects.length) * 100).toFixed(1) : 0}%
             </div>
@@ -930,13 +951,13 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
         </div>
         
         <div className="analysis-section">
-          <h3>Projects by Category</h3>
+          <h3>{t('projects.projectsByCategory')}</h3>
           <table className="data-table">
             <thead>
               <tr>
-                <th>Category</th>
-                <th>Count</th>
-                <th>Total Investment</th>
+                <th>{t('projects.category')}</th>
+                <th>{t('projects.count')}</th>
+                <th>{t('projects.totalInvestment')}</th>
               </tr>
             </thead>
             <tbody>
@@ -1030,7 +1051,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
           className={`tab ${activeTab === 'monthly' ? 'tab--active' : ''}`}
           onClick={() => setActiveTab('monthly')}
         >
-          Monthly Updates
+          {t('projects.monthlyUpdates')}
         </button>
         <button 
           className={`tab ${activeTab === 'analysis' ? 'tab--active' : ''}`}
@@ -1043,7 +1064,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
       <div className="search-bar">
         <input
           type="text"
-          placeholder="Search..."
+          placeholder={t('common.search')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="search-input"
@@ -1056,14 +1077,14 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
         <div className="overlay">
           <div className="overlay-content">
             <div className="overlay-header">
-              <h2>Add New Project</h2>
+              <h2>{t('projects.addProject')}</h2>
               <button className="close-btn" onClick={() => setShowForm(false)}>×</button>
             </div>
             <form onSubmit={handleSubmit} className="project-form">
               <div className="form-section">
-                <h3 className="form-section-title">Project Information</h3>
+                <h3 className="form-section-title">{t('projects.projectInfo')}</h3>
                 <div className="form-group">
-                  <label htmlFor="name">Project Name *</label>
+                  <label htmlFor="name">{t('projects.projectName')} *</label>
                   <input
                     type="text"
                     id="name"
@@ -1075,13 +1096,13 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="category">Category *</label>
+                    <label htmlFor="category">{t('projects.category')} *</label>
                     <select
                       id="category"
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                     >
-                      <option value="">Select category</option>
+                      <option value="">{t('projects.selectCategory')}</option>
                       <option value="Real Estate">Real Estate</option>
                       <option value="Stock Investment">Stock Investment</option>
                       <option value="Business Venture">Business Venture</option>
@@ -1092,7 +1113,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                   </div>
                   
                   <div className="form-group">
-                    <label htmlFor="status">Status *</label>
+                    <label htmlFor="status">{t('projects.status')} *</label>
                     <select
                       id="status"
                       value={status}
@@ -1108,7 +1129,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                 </div>
                 
                 <div className="form-group">
-                  <label htmlFor="description">Description</label>
+                  <label htmlFor="description">{t('projects.description')}</label>
                   <textarea
                     id="description"
                     value={description}
@@ -1122,10 +1143,10 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
               <div className="form-divider"></div>
               
               <div className="form-section">
-                <h3 className="form-section-title">Timeline & Assignment</h3>
+                <h3 className="form-section-title">{t('projects.timeline')}</h3>
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="startDate">Start Date *</label>
+                    <label htmlFor="startDate">{t('projects.startDate')} *</label>
                     <input
                       type="date"
                       id="startDate"
@@ -1135,7 +1156,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                   </div>
                   
                   <div className="form-group">
-                    <label htmlFor="endDate">End Date</label>
+                    <label htmlFor="endDate">{t('projects.endDate')}</label>
                     <input
                       type="date"
                       id="endDate"
@@ -1147,13 +1168,13 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="assignedMember">Assign To</label>
+                    <label htmlFor="assignedMember">{t('projects.assignTo')}</label>
                     <select
                       id="assignedMember"
                       value={assignedMemberId}
                       onChange={(e) => setAssignedMemberId(e.target.value)}
                     >
-                      <option value="">Select member</option>
+                      <option value="">{t('projects.selectMember')}</option>
                       {members.map((member) => (
                         <option key={member.id} value={member.id}>
                           {member.name}
@@ -1163,7 +1184,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                   </div>
                   
                   <div className="form-group">
-                    <label htmlFor="progress">Progress (%)</label>
+                    <label htmlFor="progress">{t('projects.progress')} (%)</label>
                     <input
                       type="number"
                       id="progress"
@@ -1205,32 +1226,35 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
               <div className="form-divider"></div>
               
               <div className="form-section">
-                <h3 className="form-section-title">Financial Information</h3>
+                <h3 className="form-section-title">{t('projects.financialInfo')}</h3>
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="initialInvestment">Initial Investment (৳)</label>
+                    <label htmlFor="investmentLimit">{t('projects.investmentLimit')} (৳)</label>
                     <input
                       type="number"
-                      id="initialInvestment"
-                      value={initialInvestment}
-                      onChange={(e) => setInitialInvestment(e.target.value)}
-                      placeholder="Enter initial investment"
+                      id="investmentLimit"
+                      value={investmentLimit}
+                      onChange={(e) => setInvestmentLimit(e.target.value)}
+                      placeholder="Enter investment limit"
                       min="0"
                       step="0.01"
                     />
                   </div>
                   
                   <div className="form-group">
-                    <label htmlFor="monthlyRevenue">Monthly Revenue (৳)</label>
-                    <input
-                      type="number"
-                      id="monthlyRevenue"
-                      value={monthlyRevenue}
-                      onChange={(e) => setMonthlyRevenue(e.target.value)}
-                      placeholder="Enter monthly revenue"
-                      min="0"
-                      step="0.01"
-                    />
+                    <label htmlFor="projectCashier">{t('projects.projectCashier')}</label>
+                    <select
+                      id="projectCashier"
+                      value={projectCashierName}
+                      onChange={(e) => setProjectCashierName(e.target.value)}
+                    >
+                      <option value="">{t('projects.selectCashier')}</option>
+                      {cashiers.map((c) => (
+                        <option key={c.id} value={c.value}>
+                          {c.value}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -1240,8 +1264,8 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                   <LoadingSpinner size="small" />
                 ) : (
                   <>
-                    <button type="submit" className="btn btn--primary">Create Project</button>
-                    <button type="button" className="btn btn--secondary" onClick={() => setShowForm(false)}>Cancel</button>
+                    <button type="submit" className="btn btn--primary">{t('projects.createProject')}</button>
+                    <button type="button" className="btn btn--secondary" onClick={() => setShowForm(false)}>{t('common.cancel')}</button>
                   </>
                 )}
               </div>
@@ -1254,14 +1278,14 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
         <div className="overlay">
           <div className="overlay-content">
             <div className="overlay-header">
-              <h2>Edit Project</h2>
+              <h2>{t('projects.editProject')}</h2>
               <button className="close-btn" onClick={() => { setShowEditForm(false); setEditingProject(null); }}>×</button>
             </div>
             <form onSubmit={handleEditSubmit} className="project-form">
               <div className="form-section">
-                <h3 className="form-section-title">Project Information</h3>
+                <h3 className="form-section-title">{t('projects.projectInfo')}</h3>
                 <div className="form-group">
-                  <label htmlFor="editName">Project Name *</label>
+                  <label htmlFor="editName">{t('projects.projectName')} *</label>
                   <input
                     type="text"
                     id="editName"
@@ -1273,13 +1297,13 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="editCategory">Category *</label>
+                    <label htmlFor="editCategory">{t('projects.category')} *</label>
                     <select
                       id="editCategory"
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                     >
-                      <option value="">Select category</option>
+                      <option value="">{t('projects.selectCategory')}</option>
                       <option value="Real Estate">Real Estate</option>
                       <option value="Stock Investment">Stock Investment</option>
                       <option value="Business Venture">Business Venture</option>
@@ -1290,7 +1314,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                   </div>
                   
                   <div className="form-group">
-                    <label htmlFor="editStatus">Status *</label>
+                    <label htmlFor="editStatus">{t('projects.status')} *</label>
                     <select
                       id="editStatus"
                       value={status}
@@ -1306,7 +1330,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                 </div>
                 
                 <div className="form-group">
-                  <label htmlFor="editDescription">Description</label>
+                  <label htmlFor="editDescription">{t('projects.description')}</label>
                   <textarea
                     id="editDescription"
                     value={description}
@@ -1320,10 +1344,10 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
               <div className="form-divider"></div>
               
               <div className="form-section">
-                <h3 className="form-section-title">Timeline & Assignment</h3>
+                <h3 className="form-section-title">{t('projects.timeline')}</h3>
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="editStartDate">Start Date *</label>
+                    <label htmlFor="editStartDate">{t('projects.startDate')} *</label>
                     <input
                       type="date"
                       id="editStartDate"
@@ -1333,7 +1357,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                   </div>
                   
                   <div className="form-group">
-                    <label htmlFor="editEndDate">End Date</label>
+                    <label htmlFor="editEndDate">{t('projects.endDate')}</label>
                     <input
                       type="date"
                       id="editEndDate"
@@ -1345,13 +1369,13 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="editAssignedMember">Assign To</label>
+                    <label htmlFor="editAssignedMember">{t('projects.assignTo')}</label>
                     <select
                       id="editAssignedMember"
                       value={assignedMemberId}
                       onChange={(e) => setAssignedMemberId(e.target.value)}
                     >
-                      <option value="">Select member</option>
+                      <option value="">{t('projects.selectMember')}</option>
                       {members.map((member) => (
                         <option key={member.id} value={member.id}>
                           {member.name}
@@ -1361,7 +1385,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                   </div>
                   
                   <div className="form-group">
-                    <label htmlFor="editProgress">Progress (%)</label>
+                    <label htmlFor="editProgress">{t('projects.progress')} (%)</label>
                     <input
                       type="number"
                       id="editProgress"
@@ -1403,32 +1427,35 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
               <div className="form-divider"></div>
               
               <div className="form-section">
-                <h3 className="form-section-title">Financial Information</h3>
+                <h3 className="form-section-title">{t('projects.financialInfo')}</h3>
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="editInitialInvestment">Initial Investment (৳)</label>
+                    <label htmlFor="editInvestmentLimit">{t('projects.investmentLimit')} (৳)</label>
                     <input
                       type="number"
-                      id="editInitialInvestment"
-                      value={initialInvestment}
-                      onChange={(e) => setInitialInvestment(e.target.value)}
-                      placeholder="Enter initial investment"
+                      id="editInvestmentLimit"
+                      value={investmentLimit}
+                      onChange={(e) => setInvestmentLimit(e.target.value)}
+                      placeholder="Enter investment limit"
                       min="0"
                       step="0.01"
                     />
                   </div>
                   
                   <div className="form-group">
-                    <label htmlFor="editMonthlyRevenue">Monthly Revenue (৳)</label>
-                    <input
-                      type="number"
-                      id="editMonthlyRevenue"
-                      value={monthlyRevenue}
-                      onChange={(e) => setMonthlyRevenue(e.target.value)}
-                      placeholder="Enter monthly revenue"
-                      min="0"
-                      step="0.01"
-                    />
+                    <label htmlFor="editProjectCashier">{t('projects.projectCashier')}</label>
+                    <select
+                      id="editProjectCashier"
+                      value={projectCashierName}
+                      onChange={(e) => setProjectCashierName(e.target.value)}
+                    >
+                      <option value="">{t('projects.selectCashier')}</option>
+                      {cashiers.map((c) => (
+                        <option key={c.id} value={c.value}>
+                          {c.value}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -1438,8 +1465,8 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                   <LoadingSpinner size="small" />
                 ) : (
                   <>
-                    <button type="submit" className="btn btn--primary">Update Project</button>
-                    <button type="button" className="btn btn--secondary" onClick={() => { setShowEditForm(false); setEditingProject(null); }}>Cancel</button>
+                    <button type="submit" className="btn btn--primary">{t('projects.updateProject')}</button>
+                    <button type="button" className="btn btn--secondary" onClick={() => { setShowEditForm(false); setEditingProject(null); }}>{t('common.cancel')}</button>
                   </>
                 )}
               </div>
@@ -1570,43 +1597,78 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
         <div className="overlay">
           <div className="overlay-content">
             <div className="overlay-header">
-              <h2>Add Investment</h2>
+              <h2>{t('projects.addInvestment')}</h2>
               <button className="close-btn" onClick={() => setShowInvestmentForm(false)}>×</button>
             </div>
             <form onSubmit={handleAddInvestment}>
               <div className="form-section">
                 <div className="form-group">
-                  <label>Select Project *</label>
-                  <select value={selectedProjectId} onChange={(e) => handleProjectSelect(e.target.value)} required>
-                    <option value="">Select a project</option>
+                  <label>{t('projects.selectProject')} *</label>
+                  <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} required>
+                    <option value="">{t('projects.selectProject')}</option>
                     {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Initial Investment (৳)</label>
-                  <input type="number" value={selectedProjectId ? projects.find(p => p.id === parseInt(selectedProjectId))?.initial_investment || 0 : 0} disabled />
+                  <label>{t('projects.memberShares')} *</label>
+                  <div style={{maxHeight: '300px', overflowY: 'auto', border: '1px solid #ddd', borderRadius: '8px', padding: '10px'}}>
+                    {members.map(member => (
+                      <div key={member.id} style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '6px'}}>
+                        <span style={{flex: 1, fontWeight: '500'}}>{member.name}</span>
+                        <input 
+                          type="number" 
+                          value={memberInvestments[member.id] || ''} 
+                          onChange={(e) => setMemberInvestments({...memberInvestments, [member.id]: e.target.value})} 
+                          min="0" 
+                          step="1" 
+                          placeholder="0"
+                          style={{width: '80px', padding: '5px', textAlign: 'center'}}
+                        />
+                        <div style={{display: 'flex', gap: '5px'}}>
+                          <button type="button" className="btn btn--secondary" style={{padding: '3px 8px', fontSize: '0.85em'}} onClick={() => setMemberInvestments({...memberInvestments, [member.id]: '1'})}>×1</button>
+                          <button type="button" className="btn btn--secondary" style={{padding: '3px 8px', fontSize: '0.85em'}} onClick={() => setMemberInvestments({...memberInvestments, [member.id]: '2'})}>×2</button>
+                          <button type="button" className="btn btn--secondary" style={{padding: '3px 8px', fontSize: '0.85em'}} onClick={() => setMemberInvestments({...memberInvestments, [member.id]: '3'})}>×3</button>
+                          <button type="button" className="btn btn--secondary" style={{padding: '3px 8px', fontSize: '0.85em'}} onClick={() => setMemberInvestments({...memberInvestments, [member.id]: '5'})}>×5</button>
+                        </div>
+                        {memberInvestments[member.id] > 0 && (
+                          <span style={{fontWeight: 'bold', color: '#2563eb'}}>৳{parseInt(memberInvestments[member.id]) * 1000}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
+                {Object.values(memberInvestments).some(s => s > 0) && (
+                  <div className="form-group">
+                    <label>{t('projects.totalAmount')} (৳)</label>
+                    <input 
+                      type="text" 
+                      value={`৳${Object.values(memberInvestments).reduce((sum, shares) => sum + (parseInt(shares) || 0) * 1000, 0)} (${Object.values(memberInvestments).filter(s => s > 0).length} members)`} 
+                      disabled 
+                      style={{fontWeight: 'bold', fontSize: '1.1em', backgroundColor: '#e0f2fe', color: '#0c4a6e'}} 
+                    />
+                  </div>
+                )}
                 <div className="form-group">
-                  <label>Select Member *</label>
-                  <select value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)} required>
-                    <option value="">Select a member</option>
-                    {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  <label>{t('projects.deductFrom')} *</label>
+                  <select value={deductedFromCashier} onChange={(e) => setDeductedFromCashier(e.target.value)} required>
+                    <option value="">{t('projects.selectCashier')}</option>
+                    {cashiers.map((c) => (
+                      <option key={c.id} value={c.value}>
+                        {c.value}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>+ Investment Amount (৳) *</label>
-                  <input type="number" value={investmentAmount} onChange={(e) => setInvestmentAmount(e.target.value)} min="0" step="0.01" required />
-                </div>
-                <div className="form-group">
-                  <label>Investment Date *</label>
+                  <label>{t('projects.investmentDate')} *</label>
                   <input type="date" value={investmentDate} onChange={(e) => setInvestmentDate(e.target.value)} required />
                 </div>
               </div>
               <div className="form-actions">
                 {isLoading('addInvestment') ? <LoadingSpinner size="small" /> : (
                   <>
-                    <button type="submit" className="btn btn--primary">Add Investment</button>
-                    <button type="button" className="btn btn--secondary" onClick={() => setShowInvestmentForm(false)}>Cancel</button>
+                    <button type="submit" className="btn btn--primary">{t('projects.addInvestment')}</button>
+                    <button type="button" className="btn btn--secondary" onClick={() => setShowInvestmentForm(false)}>{t('common.cancel')}</button>
                   </>
                 )}
               </div>
@@ -1619,36 +1681,36 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
         <div className="overlay">
           <div className="overlay-content">
             <div className="overlay-header">
-              <h2>Add Revenue</h2>
+              <h2>{t('projects.addRevenue')}</h2>
               <button className="close-btn" onClick={() => setShowRevenueForm(false)}>×</button>
             </div>
             <form onSubmit={handleAddRevenue}>
               <div className="form-section">
                 <div className="form-group">
-                  <label>Select Project *</label>
+                  <label>{t('projects.selectProject')} *</label>
                   <select value={revenueProjectId} onChange={(e) => setRevenueProjectId(e.target.value)} required>
-                    <option value="">Select a project</option>
+                    <option value="">{t('projects.selectProject')}</option>
                     {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Revenue Amount (৳) *</label>
+                  <label>{t('projects.revenueAmount')} (৳) *</label>
                   <input type="number" value={revenueAmount} onChange={(e) => setRevenueAmount(e.target.value)} min="0" step="0.01" required />
                 </div>
                 <div className="form-group">
-                  <label>Revenue Date *</label>
+                  <label>{t('projects.revenueDate')} *</label>
                   <input type="date" value={revenueDate} onChange={(e) => setRevenueDate(e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label>Description</label>
+                  <label>{t('projects.description')}</label>
                   <textarea value={revenueDescription} onChange={(e) => setRevenueDescription(e.target.value)} rows="3" placeholder="Optional description" />
                 </div>
               </div>
               <div className="form-actions">
                 {isLoading('addRevenue') ? <LoadingSpinner size="small" /> : (
                   <>
-                    <button type="submit" className="btn btn--primary">Add Revenue</button>
-                    <button type="button" className="btn btn--secondary" onClick={() => setShowRevenueForm(false)}>Cancel</button>
+                    <button type="submit" className="btn btn--primary">{t('projects.addRevenue')}</button>
+                    <button type="button" className="btn btn--secondary" onClick={() => setShowRevenueForm(false)}>{t('common.cancel')}</button>
                   </>
                 )}
               </div>
@@ -1661,50 +1723,50 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
         <div className="overlay">
           <div className="overlay-content">
             <div className="overlay-header">
-              <h2>{editingMonthly ? 'Edit' : 'Add'} Monthly Financial Update</h2>
+              <h2>{editingMonthly ? t('common.edit') : t('common.add')} {t('projects.monthlyUpdates')}</h2>
               <button className="close-btn" onClick={() => { setShowMonthlyForm(false); resetMonthlyForm(); }}>×</button>
             </div>
             <form onSubmit={handleAddMonthly}>
               <div className="form-section">
                 <div className="form-group">
-                  <label>Select Project *</label>
+                  <label>{t('projects.selectProject')} *</label>
                   <select value={monthlyProjectId} onChange={(e) => setMonthlyProjectId(e.target.value)} required disabled={editingMonthly}>
-                    <option value="">Select a project</option>
+                    <option value="">{t('projects.selectProject')}</option>
                     {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Month *</label>
+                    <label>{t('payments.month')} *</label>
                     <select value={monthlyMonth} onChange={(e) => setMonthlyMonth(e.target.value)} required disabled={editingMonthly}>
-                      <option value="">Select month</option>
+                      <option value="">{t('projects.selectMonth')}</option>
                       {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
                         <option key={i + 1} value={i + 1}>{m}</option>
                       ))}
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>Year *</label>
+                    <label>{t('projects.year')} *</label>
                     <input type="number" value={monthlyYear} onChange={(e) => setMonthlyYear(e.target.value)} min="2000" max="2100" required disabled={editingMonthly} />
                   </div>
                 </div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Revenue (৳)</label>
+                    <label>{t('projects.revenue')} (৳)</label>
                     <input type="number" value={monthlyRevenueAmount} onChange={(e) => setMonthlyRevenueAmount(e.target.value)} min="0" step="0.01" placeholder="0.00" />
                   </div>
                   <div className="form-group">
-                    <label>Expenses (৳)</label>
+                    <label>{t('projects.expenses')} (৳)</label>
                     <input type="number" value={monthlyExpensesAmount} onChange={(e) => setMonthlyExpensesAmount(e.target.value)} min="0" step="0.01" placeholder="0.00" />
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>Notes</label>
+                  <label>{t('projects.notes')}</label>
                   <textarea value={monthlyNotes} onChange={(e) => setMonthlyNotes(e.target.value)} rows="3" placeholder="Optional notes" />
                 </div>
                 {monthlyRevenueAmount && monthlyExpensesAmount && (
                   <div className="form-group">
-                    <label>Net Profit/Loss:</label>
+                    <label>{t('projects.netProfitLoss')}:</label>
                     <div className={`financial-preview ${(parseFloat(monthlyRevenueAmount) - parseFloat(monthlyExpensesAmount)) >= 0 ? 'text-success' : 'text-danger'}`}>
                       ৳{(parseFloat(monthlyRevenueAmount) - parseFloat(monthlyExpensesAmount)).toFixed(2)}
                     </div>
@@ -1714,8 +1776,8 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
               <div className="form-actions">
                 {isLoading('addMonthly') ? <LoadingSpinner size="small" /> : (
                   <>
-                    <button type="submit" className="btn btn--primary">{editingMonthly ? 'Update' : 'Add'} Monthly Update</button>
-                    <button type="button" className="btn btn--secondary" onClick={() => { setShowMonthlyForm(false); resetMonthlyForm(); }}>Cancel</button>
+                    <button type="submit" className="btn btn--primary">{editingMonthly ? t('common.update') : t('common.add')} {t('projects.monthlyUpdates')}</button>
+                    <button type="button" className="btn btn--secondary" onClick={() => { setShowMonthlyForm(false); resetMonthlyForm(); }}>{t('common.cancel')}</button>
                   </>
                 )}
               </div>

@@ -186,6 +186,23 @@ class TransactionRequestsService {
       throw new Error(error.message || 'Failed to reject transaction request');
     }
   }
+
+  async revertRequest(id) {
+    try {
+      const { data, error } = await supabase
+        .from('transaction_requests')
+        .update({ status: 'pending' })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return data;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to revert transaction request');
+    }
+  }
 }
 
 // Create and export a singleton instance

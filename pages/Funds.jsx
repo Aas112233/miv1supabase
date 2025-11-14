@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { getFunds, getFundTransactions, createFundTransaction, approveTransaction, rejectTransaction, getMemberAllocations, createTransfer, getFundSummary, deleteFund } from '../api/fundsService';
+import { supabase } from '../src/config/supabaseClient';
 import { deleteFundTransaction } from '../api/fundTransactionsService';
 import membersService from '../api/membersService';
 import masterDataService from '../api/masterDataService';
 import { useLanguage } from '../contexts/LanguageContext';
-import { FaWallet, FaExchangeAlt, FaUsers, FaCheckCircle, FaTimesCircle, FaPlus } from 'react-icons/fa';
+import { FaWallet, FaExchangeAlt, FaUsers, FaCheckCircle, FaTimesCircle, FaPlus, FaPiggyBank } from 'react-icons/fa';
 import './Funds.css';
 
 const Funds = () => {
@@ -30,6 +31,9 @@ const Funds = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [transactionTypes, setTransactionTypes] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [cashierSavings, setCashierSavings] = useState([]);
+  const [cashiers, setCashiers] = useState([]);
+  const [projectInvestments, setProjectInvestments] = useState([]);
 
   useEffect(() => {
     loadData();
@@ -41,7 +45,9 @@ const Funds = () => {
       if (activeTab === 'overview') {
         const fundsData = await getFunds();
         const summaryData = await getFundSummary();
-        setSummary(summaryData);
+        const investmentsData = await getProjectInvestments();
+        const investmentStats = calculateInvestmentStats(investmentsData);
+        setSummary({...summaryData, ...investmentStats});
         setFunds(fundsData);
       } else if (activeTab === 'transactions') {
         const status = filterStatus === 'all' ? null : filterStatus;
@@ -59,6 +65,12 @@ const Funds = () => {
       } else if (activeTab === 'approvals') {
         const pending = await getFundTransactions(null, 'pending');
         setTransactions(pending);
+      } else if (activeTab === 'savings') {
+        const savingsData = await getCashierSavings();
+        setCashierSavings(savingsData);
+      } else if (activeTab === 'investments') {
+        const investmentsData = await getProjectInvestments();
+        setProjectInvestments(investmentsData);
       }
       
       if (!members.length) {
@@ -72,6 +84,10 @@ const Funds = () => {
       if (!transactionTypes.length) {
         const types = await masterDataService.getMasterDataByCategory('fund_transaction_type');
         setTransactionTypes(types);
+      }
+      if (!cashiers.length) {
+        const cashiersList = await masterDataService.getMasterDataByCategory('cashier_name');
+        setCashiers(cashiersList);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -98,6 +114,8 @@ const Funds = () => {
           parseFloat(formData.amount), 
           formData.description
         );
+      } else if (modalType === 'cashier_transfer') {
+        await createCashierTransfer(formData);
       }
       setShowModal(false);
       loadData();
@@ -106,6 +124,98 @@ const Funds = () => {
       alert('Error: ' + error.message);
     }
   };
+
+  const createCashierTransfer = async (transferData) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const { data, error } = await supabase
+      .from('cashier_transfers')
+      .insert([{
+        from_cashier_name: transferData.from_cashier_name,
+        to_cashier_name: transferData.to_cashier_name || null,
+        to_fund_id: transferData.to_fund_id || null,
+        amount: parseFloat(transferData.amount),
+        description: transferData.description,
+        transfer_date: transferData.transfer_date || new Date().toISOString().split('T')[0],
+        created_by: user.id
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  };
+
+  const getCashierSavings = async () => {
+    // Get payments grouped by cashier
+    const { data: payments, error: paymentsError } = await supabase
+      .from('payments')
+      .select('cashier_name, amount');
+    
+    if (paymentsError) throw paymentsError;
+    
+    // Get cashier transfers
+    const { data: transfers, error: transfersError } = await supabase
+      .from('cashier_transfers')
+      .select('from_cashier_name, to_cashier_name, to_fund_id, amount');
+    
+    if (transfersError) throw transfersError;
+    
+    // Calculate total by cashier
+    const cashierTotals = {};
+    
+    // Add payments
+    payments?.forEach(payment => {
+      const cashier = payment.cashier_name || 'Unknown';
+      cashierTotals[cashier] = (cashierTotals[cashier] || 0) + parseFloat(payment.amount || 0);
+    });
+    
+    // Subtract outgoing transfers
+    transfers?.forEach(transfer => {
+      if (transfer.from_cashier_name) {
+        const cashier = transfer.from_cashier_name;
+        cashierTotals[cashier] = (cashierTotals[cashier] || 0) - parseFloat(transfer.amount || 0);
+      }
+      // Add incoming transfers to cashier
+      if (transfer.to_cashier_name) {
+        const cashier = transfer.to_cashier_name;
+        cashierTotals[cashier] = (cashierTotals[cashier] || 0) + parseFloat(transfer.amount || 0);
+      }
+    });
+    
+    // Convert to array format
+    return Object.entries(cashierTotals).map(([name, amount]) => ({
+      id: name,
+      cashier_name: name,
+      total_amount: amount
+    }));
+  };
+
+  const getProjectInvestments = async () => {
+    const { data, error } = await supabase
+      .from('project_investments')
+      .select(`
+        *,
+        project:projects(id, name, status),
+        member:members(id, name)
+      `)
+      .order('investment_date', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  };
+
+  const calculateInvestmentStats = (investments) => {
+    const totalInvestment = investments.reduce((sum, inv) => sum + parseFloat(inv.amount || 0), 0);
+    const activeProjects = [...new Set(investments.filter(inv => inv.project?.status === 'Active').map(inv => inv.project_id))].length;
+    return {
+      totalInvestment,
+      activeProjects,
+      totalInvestors: [...new Set(investments.map(inv => inv.member_id))].length
+    };
+  };
+
+
 
   const handleApprove = async (id) => {
     if (!window.confirm('Approve this transaction?')) return;
@@ -223,13 +333,19 @@ const Funds = () => {
           {t('funds.transactions')}
         </button>
         <button className={activeTab === 'transfers' ? 'active' : ''} onClick={() => setActiveTab('transfers')}>
-          <FaExchangeAlt /> {t('funds.transfers')}
+          <FaExchangeAlt /> Fund Transfers
         </button>
         <button className={activeTab === 'members' ? 'active' : ''} onClick={() => setActiveTab('members')}>
           <FaUsers /> {t('funds.members')}
         </button>
         <button className={activeTab === 'approvals' ? 'active' : ''} onClick={() => setActiveTab('approvals')}>
           <FaCheckCircle /> {t('funds.approvals')}
+        </button>
+        <button className={activeTab === 'savings' ? 'active' : ''} onClick={() => setActiveTab('savings')}>
+          <FaPiggyBank /> Fund Savings
+        </button>
+        <button className={activeTab === 'investments' ? 'active' : ''} onClick={() => setActiveTab('investments')}>
+          <FaWallet /> Project Investments
         </button>
       </div>
 
@@ -247,6 +363,18 @@ const Funds = () => {
             <div className="summary-card">
               <h3>{t('funds.pendingApprovals')}</h3>
               <p className="amount">{summary.pendingTransactions}</p>
+            </div>
+            <div className="summary-card">
+              <h3>Total Investments</h3>
+              <p className="amount">{formatCurrency(summary.totalInvestment || 0)}</p>
+            </div>
+            <div className="summary-card">
+              <h3>Active Projects</h3>
+              <p className="amount">{summary.activeProjects || 0}</p>
+            </div>
+            <div className="summary-card">
+              <h3>Total Investors</h3>
+              <p className="amount">{summary.totalInvestors || 0}</p>
             </div>
           </div>
 
@@ -462,10 +590,73 @@ const Funds = () => {
         </div>
       )}
 
+      {activeTab === 'savings' && (
+        <div className="savings-tab">
+          <div className="tab-actions">
+            <div></div>
+            <button onClick={() => openModal('cashier_transfer')} className="btn-primary">
+              <FaExchangeAlt /> Cashier Transfer
+            </button>
+          </div>
+
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Cashier Name</th>
+                <th>Total Amount Held</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cashierSavings.map(saving => (
+                <tr key={saving.id}>
+                  <td>{saving.cashier_name}</td>
+                  <td className="positive">{formatCurrency(saving.total_amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === 'investments' && (
+        <div className="investments-tab">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Project</th>
+                <th>Member</th>
+                <th>Shares</th>
+                <th>Amount</th>
+                <th>Deducted From</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projectInvestments.map(inv => (
+                <tr key={inv.id}>
+                  <td>{new Date(inv.investment_date).toLocaleDateString()}</td>
+                  <td>{inv.project?.name || 'N/A'}</td>
+                  <td>{inv.member?.name || 'N/A'}</td>
+                  <td>{inv.shares}</td>
+                  <td className="positive">{formatCurrency(inv.amount)}</td>
+                  <td>{inv.deducted_from_cashier}</td>
+                  <td>
+                    <span className={`status-badge ${inv.project?.status?.toLowerCase() || 'active'}`}>
+                      {inv.project?.status || 'Active'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{modalType === 'transaction' ? 'Add Transaction' : 'Transfer Funds'}</h2>
+            <h2>{modalType === 'transaction' ? 'Add Transaction' : modalType === 'transfer' ? 'Transfer Funds' : 'Cashier Transfer'}</h2>
             <form onSubmit={handleSubmit}>
               {modalType === 'transaction' ? (
                 <>
@@ -498,7 +689,7 @@ const Funds = () => {
                     <input type="date" required value={formData.transaction_date || ''} onChange={(e) => setFormData({...formData, transaction_date: e.target.value})} />
                   </div>
                 </>
-              ) : (
+              ) : modalType === 'transfer' ? (
                 <>
                   <div className="form-group">
                     <label>From Fund</label>
@@ -523,7 +714,57 @@ const Funds = () => {
                     <textarea value={formData.description || ''} onChange={(e) => setFormData({...formData, description: e.target.value})} />
                   </div>
                 </>
-              )}
+              ) : modalType === 'cashier_transfer' ? (
+                <>
+                  <div className="form-group">
+                    <label>From Cashier</label>
+                    <select required value={formData.from_cashier_name || ''} onChange={(e) => setFormData({...formData, from_cashier_name: e.target.value})}>
+                      <option value="">Select Cashier</option>
+                      {cashiers.map(c => <option key={c.value} value={c.value}>{c.value}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Transfer To</label>
+                    <select required value={formData.transfer_to_type || ''} onChange={(e) => {
+                      setFormData({...formData, transfer_to_type: e.target.value, to_cashier_id: '', to_fund_id: ''});
+                    }}>
+                      <option value="">Select Type</option>
+                      <option value="cashier">Another Cashier</option>
+                      <option value="fund">Fund</option>
+                    </select>
+                  </div>
+                  {formData.transfer_to_type === 'cashier' && (
+                    <div className="form-group">
+                      <label>To Cashier</label>
+                      <select required value={formData.to_cashier_name || ''} onChange={(e) => setFormData({...formData, to_cashier_name: e.target.value})}>
+                        <option value="">Select Cashier</option>
+                        {cashiers.filter(c => c.value !== formData.from_cashier_name).map(c => <option key={c.value} value={c.value}>{c.value}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {formData.transfer_to_type === 'fund' && (
+                    <div className="form-group">
+                      <label>To Fund</label>
+                      <select required value={formData.to_fund_id || ''} onChange={(e) => setFormData({...formData, to_fund_id: e.target.value})}>
+                        <option value="">Select Fund</option>
+                        {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <div className="form-group">
+                    <label>Amount</label>
+                    <input type="number" step="0.01" required value={formData.amount || ''} onChange={(e) => setFormData({...formData, amount: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Description</label>
+                    <textarea value={formData.description || ''} onChange={(e) => setFormData({...formData, description: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Date</label>
+                    <input type="date" required value={formData.transfer_date || ''} onChange={(e) => setFormData({...formData, transfer_date: e.target.value})} />
+                  </div>
+                </>
+              ) : null}
               <div className="modal-actions">
                 <button type="submit" className="btn-primary">Submit</button>
                 <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Cancel</button>

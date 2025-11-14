@@ -9,7 +9,7 @@ import permissionsService from '../api/permissionsService';
 import masterDataService from '../api/masterDataService';
 import './Login.css';
 
-const Login = ({ onLogin }) => {
+const Login = ({ onLogin, sessionTerminated, setSessionTerminated }) => {
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,7 +29,21 @@ const Login = ({ onLogin }) => {
 
   useEffect(() => {
     loadClubName();
-  }, []);
+    
+    // Load remembered email
+    const rememberedEmail = localStorage.getItem('remembered-email');
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+      setRememberMe(true);
+    }
+    
+    // Show session terminated message if redirected from session termination
+    if (sessionTerminated) {
+      setShowMessage(true);
+      setMessageType('blocked');
+      setMessageText('Your session has been terminated by an administrator. Please contact your administrator.');
+    }
+  }, [sessionTerminated]);
 
   const loadClubName = async () => {
     try {
@@ -77,6 +91,13 @@ const Login = ({ onLogin }) => {
       // Update last login
       await userService.updateLastLogin(user.id);
       await auditService.logUserLogin(user.id);
+      
+      // Store or remove email based on remember me
+      if (rememberMe) {
+        localStorage.setItem('remembered-email', email);
+      } else {
+        localStorage.removeItem('remembered-email');
+      }
       
       setMessageType('success');
       setMessageText('Login successful!');
@@ -252,7 +273,10 @@ const Login = ({ onLogin }) => {
                 <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px' }}>If you believe this is an error, please contact your administrator.</p>
                 <button 
                   className="btn btn--primary"
-                  onClick={() => setShowMessage(false)}
+                  onClick={() => {
+                    setShowMessage(false);
+                    if (sessionTerminated) setSessionTerminated(false);
+                  }}
                   style={{ width: '100%' }}
                 >
                   OK

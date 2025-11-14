@@ -1,0 +1,28 @@
+# Disable caching for HTML files
+<FilesMatch "\.(html|htm)$">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+  Header set Pragma "no-cache"
+  Header set Expires "0"
+</FilesMatch>
+
+# Disable caching for JS and CSS files
+<FilesMatch "\.(js|css)$">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+  Header set Pragma "no-cache"
+  Header set Expires "0"
+</FilesMatch>
+
+# Cache assets with hash forever
+<FilesMatch "\.(jpg|jpeg|png|gif|ico|svg|woff|woff2|ttf|eot|webp|pdf)$">
+  Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+
+# Enable rewrite engine for SPA routing
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>

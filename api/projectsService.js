@@ -17,10 +17,7 @@ class ProjectsService {
     try {
       const { data, error } = await supabase
         .from('projects')
-        .select(`
-          *,
-          assigned_member:members!assigned_member_id(id, name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -34,10 +31,7 @@ class ProjectsService {
     try {
       const { data, error } = await supabase
         .from('projects')
-        .select(`
-          *,
-          assigned_member:members!assigned_member_id(id, name)
-        `)
+        .select('*')
         .eq('id', id)
         .single();
       
@@ -60,10 +54,9 @@ class ProjectsService {
           start_date: projectData.startDate,
           end_date: projectData.endDate,
           status: projectData.status,
-          assigned_member_id: projectData.assignedMemberId,
           progress_percentage: projectData.progressPercentage || 0,
-          initial_investment: projectData.initialInvestment || 0,
-          monthly_revenue: projectData.monthlyRevenue || 0,
+          investment_limit: projectData.investmentLimit || 0,
+          project_cashier_name: projectData.projectCashierName || null,
           created_by: userId
         }])
         .select()
@@ -96,10 +89,9 @@ class ProjectsService {
           start_date: projectData.startDate,
           end_date: projectData.endDate,
           status: projectData.status,
-          assigned_member_id: projectData.assignedMemberId,
           progress_percentage: projectData.progressPercentage,
-          initial_investment: projectData.initialInvestment || 0,
-          monthly_revenue: projectData.monthlyRevenue || 0
+          investment_limit: projectData.investmentLimit,
+          project_cashier_name: projectData.projectCashierName || null
         })
         .eq('id', id)
         .select()
@@ -241,7 +233,9 @@ class ProjectsService {
         .insert([{
           project_id: investmentData.projectId,
           member_id: investmentData.memberId,
-          amount: investmentData.amount,
+          shares: investmentData.shares,
+          amount: investmentData.shares * 1000,
+          deducted_from_cashier: investmentData.deductedFromCashier,
           investment_date: investmentData.investmentDate
         }])
         .select()
@@ -387,6 +381,28 @@ class ProjectsService {
       return data;
     } catch (error) {
       throw new Error(error.message || 'Failed to fetch project expenses');
+    }
+  }
+
+  async addProjectExpense(expenseData) {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert([{
+          project_id: expenseData.projectId,
+          reason: expenseData.reason,
+          amount: expenseData.amount,
+          expense_date: expenseData.expenseDate,
+          expense_by: expenseData.expenseBy,
+          deducted_from_cashier: expenseData.deductedFromCashier
+        }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to add expense');
     }
   }
 

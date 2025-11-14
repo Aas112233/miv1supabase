@@ -73,8 +73,10 @@ const UserManagement = ({ currentUser }) => {
       transactions: { read: true, write: false, manage: false },
       requests: { read: true, write: false, manage: false },
       reports: { read: true, write: false, manage: false },
+      analytics: { read: true, write: false, manage: false },
       dividends: { read: true, write: false, manage: false },
-      budget: { read: true, write: false, manage: false },
+      funds: { read: true, write: false, manage: false },
+      goals: { read: true, write: false, manage: false },
       master_data: { read: true, write: false, manage: false },
       settings: { read: true, write: false, manage: false },
       profile: { read: true, write: false, manage: false }
@@ -377,13 +379,21 @@ const UserManagement = ({ currentUser }) => {
 
     try {
       setLoading(true);
-      // Note: Supabase requires admin API to change other users' passwords
-      // For now, we'll show a message that user needs to reset via email
-      await authService.resetPassword(selectedUser.email);
+      const result = await userService.setTempPassword(selectedUser.id, newPassword);
+      
+      alert(
+        `Temporary password set successfully!\n\n` +
+        `User: ${selectedUser.name}\n` +
+        `Email: ${result.email}\n` +
+        `Temporary Password: ${result.temp_password}\n\n` +
+        `Please share this password with the user securely.\n` +
+        `They can use this to login and should change it immediately.`
+      );
+      
       setShowCredentialsModal(false);
       setNewPassword('');
       setConfirmPassword('');
-      addToast('Password reset email sent to user', 'success');
+      addToast('Temporary password set successfully', 'success');
     } catch (error) {
       addToast(getUserFriendlyError(error), 'error');
     } finally {
@@ -401,8 +411,10 @@ const UserManagement = ({ currentUser }) => {
     { id: 'transactions', name: 'Transactions' },
     { id: 'requests', name: 'Transaction Requests' },
     { id: 'reports', name: 'Reports' },
+    { id: 'analytics', name: 'Analytics' },
     { id: 'dividends', name: 'Dividends' },
-    { id: 'budget', name: 'Budget' },
+    { id: 'funds', name: 'Funds' },
+    { id: 'goals', name: 'Goals' },
     { id: 'master_data', name: 'Master Data' },
     { id: 'settings', name: 'Settings' },
     { id: 'profile', name: 'User Management' }
@@ -418,6 +430,8 @@ const UserManagement = ({ currentUser }) => {
   // Define available roles
   const roles = [
     { id: 'member', name: 'Member' },
+    { id: 'manager', name: 'Manager' },
+    { id: 'accountant', name: 'Accountant' },
     { id: 'admin', name: 'Admin' }
   ];
 
@@ -566,8 +580,9 @@ const UserManagement = ({ currentUser }) => {
                   value={editFormData.role}
                   onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
                 >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
+                  {roles.map(role => (
+                    <option key={role.id} value={role.id}>{role.name}</option>
+                  ))}
                 </select>
               </div>
               <div className="form-group">
@@ -641,8 +656,9 @@ const UserManagement = ({ currentUser }) => {
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
+                  {roles.map(role => (
+                    <option key={role.id} value={role.id}>{role.name}</option>
+                  ))}
                 </select>
               </div>
               <div className="form-actions">
@@ -660,13 +676,42 @@ const UserManagement = ({ currentUser }) => {
           <div className="overlay-content" style={{ maxWidth: '500px' }}>
             <div className="overlay-header">
               <h2>Change Password for {selectedUser.name}</h2>
-              <button className="close-btn" onClick={() => setShowCredentialsModal(false)}>×</button>
+              <button className="close-btn" onClick={() => {
+                setShowCredentialsModal(false);
+                setNewPassword('');
+                setConfirmPassword('');
+              }}>×</button>
             </div>
             <form onSubmit={handleChangeCredentials} style={{ padding: '25px' }}>
-              <p style={{ marginBottom: '20px', color: '#6c757d' }}>A password reset link will be sent to {selectedUser.email}</p>
+              <div className="form-group">
+                <label>New Password *</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength="6"
+                  placeholder="Enter new password"
+                />
+              </div>
+              <div className="form-group">
+                <label>Confirm Password *</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength="6"
+                  placeholder="Re-enter new password"
+                />
+              </div>
               <div className="form-actions">
-                <button type="button" className="btn btn--secondary" onClick={() => setShowCredentialsModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn--primary" disabled={loading}>Send Reset Link</button>
+                <button type="button" className="btn btn--secondary" onClick={() => {
+                  setShowCredentialsModal(false);
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }}>Cancel</button>
+                <button type="submit" className="btn btn--primary" disabled={loading}>Update Password</button>
               </div>
             </form>
           </div>

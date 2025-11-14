@@ -643,6 +643,27 @@ body.theme-dark .btn--danger:hover {
   background-color: #c62828;
 }
 
+.btn--view {
+  color: white;
+  background-color: #17a2b8;
+}
+
+body.theme-light .btn--view {
+  background-color: #17a2b8;
+}
+
+body.theme-light .btn--view:hover {
+  background-color: #138496;
+}
+
+body.theme-dark .btn--view {
+  background-color: #00acc1;
+}
+
+body.theme-dark .btn--view:hover {
+  background-color: #0097a7;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   /* Card-based grid styles removed */

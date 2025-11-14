@@ -571,6 +571,36 @@ body.theme-dark .sidebar-nav a.active:hover {
   margin-right: 0;
 }
 
+.notification-badge {
+  background: #e74c3c;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: auto;
+  min-width: 20px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.sidebar.collapsed .notification-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  margin-left: 0;
+}
+
 .sidebar-footer {
   padding: 20px;
   border-top: 1px solid;

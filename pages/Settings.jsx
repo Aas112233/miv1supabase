@@ -103,40 +103,36 @@ const Settings = ({
         <p className="settings-subtitle">Manage your application preferences and configurations</p>
       </div>
       
+      <div className="tabs">
+        <button 
+          className={`tab ${activeSection === 'notifications' ? 'tab--active' : ''}`}
+          onClick={() => setActiveSection('notifications')}
+        >
+          <FaBell /> Notifications
+        </button>
+        {currentUser?.role === 'admin' && (
+          <button 
+            className={`tab ${activeSection === 'data' ? 'tab--active' : ''}`}
+            onClick={() => setActiveSection('data')}
+          >
+            <FaDatabase /> Data Management
+          </button>
+        )}
+        <button 
+          className={`tab ${activeSection === 'audit' ? 'tab--active' : ''}`}
+          onClick={() => setActiveSection('audit')}
+        >
+          <FaHistory /> Audit Logs
+        </button>
+        <button 
+          className={`tab ${activeSection === 'appearance' ? 'tab--active' : ''}`}
+          onClick={() => setActiveSection('appearance')}
+        >
+          <FaPalette /> Appearance
+        </button>
+      </div>
+      
       <div className="settings-container">
-        <div className="settings-sidebar">
-          <ul>
-            <li 
-              className={activeSection === 'notifications' ? 'active' : ''} 
-              onClick={() => setActiveSection('notifications')}
-            >
-              <FaBell className="sidebar-icon" />
-              <span>Notifications</span>
-            </li>
-            <li 
-              className={activeSection === 'data' ? 'active' : ''} 
-              onClick={() => setActiveSection('data')}
-            >
-              <FaDatabase className="sidebar-icon" />
-              <span>Data Management</span>
-            </li>
-            <li 
-              className={activeSection === 'audit' ? 'active' : ''} 
-              onClick={() => setActiveSection('audit')}
-            >
-              <FaHistory className="sidebar-icon" />
-              <span>Audit Logs</span>
-            </li>
-            <li 
-              className={activeSection === 'appearance' ? 'active' : ''} 
-              onClick={() => setActiveSection('appearance')}
-            >
-              <FaPalette className="sidebar-icon" />
-              <span>Appearance</span>
-            </li>
-          </ul>
-        </div>
-        
         <div className="settings-content">
           {activeSection === 'notifications' && (
             <div className="settings-section">
@@ -174,7 +170,7 @@ const Settings = ({
             </div>
           )}
           
-          {activeSection === 'data' && (
+          {activeSection === 'data' && currentUser?.role === 'admin' && (
             <div className="settings-section">
               <h2>Data Management</h2>
               <div className="data-actions">

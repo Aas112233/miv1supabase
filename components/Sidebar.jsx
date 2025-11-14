@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useLanguage } from '../contexts/LanguageContext';
+import { supabase } from '../src/config/supabaseClient';
 import masterDataService from '../api/masterDataService';
+import { hasPermission } from './PermissionChecker';
 import { 
   FaChartBar, 
   FaUsers, 
@@ -31,15 +33,29 @@ const Sidebar = ({ currentUser, onLogout }) => {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useLocalStorage('welcomeModalShown', false);
   const [clubName, setClubName] = useState('Investment Club');
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   useEffect(() => {
     loadClubName();
+    loadPendingRequests();
     if (currentUser && !showWelcomeModal && window.innerWidth <= 768) {
       const role = currentUser.role?.toLowerCase();
       if (role === 'admin' || role === 'accountant' || role === 'manager') {
         setShowWelcomeModal(true);
       }
     }
+    
+    // Subscribe to real-time updates
+    const subscription = supabase
+      .channel('transaction_requests_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transaction_requests' }, () => {
+        loadPendingRequests();
+      })
+      .subscribe();
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [currentUser]);
 
   const loadClubName = async () => {
@@ -49,6 +65,25 @@ const Sidebar = ({ currentUser, onLogout }) => {
       if (club) setClubName(club.value);
     } catch (error) {
       console.error('Failed to load club name:', error);
+    }
+  };
+
+  const loadPendingRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transaction_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      
+      if (!error) {
+        const { count } = await supabase
+          .from('transaction_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending');
+        setPendingRequestsCount(count || 0);
+      }
+    } catch (error) {
+      console.error('Failed to load pending requests:', error);
     }
   };
 
@@ -80,6 +115,10 @@ const Sidebar = ({ currentUser, onLogout }) => {
     window.location.reload();
   };
 
+  const canAccess = (screenName) => {
+    return hasPermission(currentUser, screenName, 'read');
+  };
+
   return (
     <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
@@ -105,156 +144,189 @@ const Sidebar = ({ currentUser, onLogout }) => {
       </div>
       <nav className="sidebar-nav">
         <ul>
-          <li>
-            <Link 
-              to="/dashboard" 
-              className={isActive('/dashboard') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaChartBar className="nav-icon" />
-              {!isCollapsed && t.nav.dashboard}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/members" 
-              className={isActive('/members') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaUsers className="nav-icon" />
-              {!isCollapsed && t.nav.members}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/payments" 
-              className={isActive('/payments') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaMoneyBillWave className="nav-icon" />
-              {!isCollapsed && t.nav.payments}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/expenses" 
-              className={isActive('/expenses') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaReceipt className="nav-icon" />
-              {!isCollapsed && t.nav.expenses}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/projects" 
-              className={isActive('/projects') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaProjectDiagram className="nav-icon" />
-              {!isCollapsed && t.nav.projects}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/transactions" 
-              className={isActive('/transactions') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaCreditCard className="nav-icon" />
-              {!isCollapsed && t.nav.transactions}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/analytics" 
-              className={isActive('/analytics') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaChartPie className="nav-icon" />
-              {!isCollapsed && t.nav.analytics}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/requests" 
-              className={isActive('/requests') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaFileAlt className="nav-icon" />
-              {!isCollapsed && t.nav.transactionRequests}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/profile" 
-              className={isActive('/profile') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaUser className="nav-icon" />
-              {!isCollapsed && t.nav.userManagement}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/reports" 
-              className={isActive('/reports') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaChartLine className="nav-icon" />
-              {!isCollapsed && t.nav.reports}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/dividends" 
-              className={isActive('/dividends') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaMoneyBillAlt className="nav-icon" />
-              {!isCollapsed && t.nav.dividends}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/budget" 
-              className={isActive('/budget') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaClipboardList className="nav-icon" />
-              {!isCollapsed && t.nav.goals}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/funds" 
-              className={isActive('/funds') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaWallet className="nav-icon" />
-              {!isCollapsed && t.nav.funds}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/master-data" 
-              className={isActive('/master-data') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaDatabase className="nav-icon" />
-              {!isCollapsed && t.nav.masterData}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="/settings" 
-              className={isActive('/settings') ? 'active' : ''}
-              onClick={handleNavClick}
-            >
-              <FaCog className="nav-icon" />
-              {!isCollapsed && t.nav.settings}
-            </Link>
-          </li>
+          {canAccess('dashboard') && (
+            <li>
+              <Link 
+                to="/dashboard" 
+                className={isActive('/dashboard') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaChartBar className="nav-icon" />
+                {!isCollapsed && t.nav.dashboard}
+              </Link>
+            </li>
+          )}
+          {canAccess('members') && (
+            <li>
+              <Link 
+                to="/members" 
+                className={isActive('/members') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaUsers className="nav-icon" />
+                {!isCollapsed && t.nav.members}
+              </Link>
+            </li>
+          )}
+          {canAccess('payments') && (
+            <li>
+              <Link 
+                to="/payments" 
+                className={isActive('/payments') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaMoneyBillWave className="nav-icon" />
+                {!isCollapsed && t.nav.payments}
+              </Link>
+            </li>
+          )}
+          {canAccess('expenses') && (
+            <li>
+              <Link 
+                to="/expenses" 
+                className={isActive('/expenses') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaReceipt className="nav-icon" />
+                {!isCollapsed && t.nav.expenses}
+              </Link>
+            </li>
+          )}
+          {canAccess('projects') && (
+            <li>
+              <Link 
+                to="/projects" 
+                className={isActive('/projects') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaProjectDiagram className="nav-icon" />
+                {!isCollapsed && t.nav.projects}
+              </Link>
+            </li>
+          )}
+          {canAccess('transactions') && (
+            <li>
+              <Link 
+                to="/transactions" 
+                className={isActive('/transactions') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaCreditCard className="nav-icon" />
+                {!isCollapsed && t.nav.transactions}
+              </Link>
+            </li>
+          )}
+          {canAccess('analytics') && (
+            <li>
+              <Link 
+                to="/analytics" 
+                className={isActive('/analytics') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaChartPie className="nav-icon" />
+                {!isCollapsed && t.nav.analytics}
+              </Link>
+            </li>
+          )}
+          {canAccess('requests') && (
+            <li>
+              <Link 
+                to="/requests" 
+                className={isActive('/requests') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaFileAlt className="nav-icon" />
+                {!isCollapsed && t.nav.transactionRequests}
+                {pendingRequestsCount > 0 && (
+                  <span className="notification-badge">{pendingRequestsCount}</span>
+                )}
+              </Link>
+            </li>
+          )}
+          {canAccess('profile') && (
+            <li>
+              <Link 
+                to="/profile" 
+                className={isActive('/profile') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaUser className="nav-icon" />
+                {!isCollapsed && t.nav.userManagement}
+              </Link>
+            </li>
+          )}
+          {canAccess('reports') && (
+            <li>
+              <Link 
+                to="/reports" 
+                className={isActive('/reports') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaChartLine className="nav-icon" />
+                {!isCollapsed && t.nav.reports}
+              </Link>
+            </li>
+          )}
+          {canAccess('dividends') && (
+            <li>
+              <Link 
+                to="/dividends" 
+                className={isActive('/dividends') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaMoneyBillAlt className="nav-icon" />
+                {!isCollapsed && t.nav.dividends}
+              </Link>
+            </li>
+          )}
+          {canAccess('goals') && (
+            <li>
+              <Link 
+                to="/budget" 
+                className={isActive('/budget') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaClipboardList className="nav-icon" />
+                {!isCollapsed && t.nav.goals}
+              </Link>
+            </li>
+          )}
+          {canAccess('funds') && (
+            <li>
+              <Link 
+                to="/funds" 
+                className={isActive('/funds') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaWallet className="nav-icon" />
+                {!isCollapsed && t.nav.funds}
+              </Link>
+            </li>
+          )}
+          {canAccess('master_data') && (
+            <li>
+              <Link 
+                to="/master-data" 
+                className={isActive('/master-data') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaDatabase className="nav-icon" />
+                {!isCollapsed && t.nav.masterData}
+              </Link>
+            </li>
+          )}
+          {canAccess('settings') && (
+            <li>
+              <Link 
+                to="/settings" 
+                className={isActive('/settings') ? 'active' : ''}
+                onClick={handleNavClick}
+              >
+                <FaCog className="nav-icon" />
+                {!isCollapsed && t.nav.settings}
+              </Link>
+            </li>
+          )}
         </ul>
       </nav>
       {currentUser && (

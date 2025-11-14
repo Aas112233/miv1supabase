@@ -15,7 +15,14 @@ A comprehensive web application for managing investment club finances with Supab
 - Multi-language support (English, Bengali)
 - Role-based access control
 - Audit logging
-- Project investment tracking
+- **Enhanced Project Management System:**
+  - Project investment tracking with multiple members
+  - Monthly revenue and expense tracking
+  - Automatic investment percentage calculation
+  - Project financial calculator with ROI analysis
+  - Member-wise profit/loss distribution
+  - Detailed completion reports
+  - Break-even analysis
 
 ## Technology Stack
 
@@ -83,9 +90,37 @@ A comprehensive web application for managing investment club finances with Supab
 3. Set up authentication and configure Row Level Security (RLS) policies
 4. Add your Supabase credentials to the `.env` file
 
+### Project Management Enhancements Setup
+For the enhanced project management features, run these SQL migrations:
+```bash
+# Phase 1: Monthly Financial Tracking
+sql/project_monthly_financials.sql
+
+# Phase 2: Investment Distribution & Calculator
+sql/project_member_investments.sql
+```
+
+See `docs/QUICK_SETUP_PROJECT_ENHANCEMENTS.md` for detailed setup instructions.
+
 For local development with Supabase:
 1. Install the Supabase CLI
 2. Run `supabase start` in the `/supabase` directory
+
+## Documentation
+
+### Project Management System
+- **Quick Setup**: `docs/QUICK_SETUP_PROJECT_ENHANCEMENTS.md` - 5-minute setup guide
+- **Complete Guide**: `docs/PROJECT_MANAGEMENT_ENHANCEMENTS.md` - Full documentation
+- **Phase 1**: `docs/PROJECT_ENHANCEMENTS_PHASE1.md` - Monthly financial tracking
+- **Phase 2**: `docs/PROJECT_ENHANCEMENTS_PHASE2.md` - Calculator & reports
+
+### Fund Management System
+- **Complete Guide**: `docs/FUND_MANAGEMENT_SYSTEM.md` - Full documentation with setup, usage, and API reference
+
+### Other Documentation
+- User Management: `docs/USER_MANAGEMENT_COMPLETE_GUIDE.md`
+- Permissions System: `docs/PERMISSIONS_SYSTEM.md`
+- Authentication: `docs/AUTHENTICATION_ENHANCEMENTS.md`
 
 ## Deployment
 

@@ -5,9 +5,20 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { hasWritePermission } from '../components/PermissionChecker';
 import projectsService from '../api/projectsService';
 import { getUserFriendlyError } from '../src/utils/errorHandler';
+import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 import './Projects.css';
 
 const Projects = ({ projects, setProjects, members, currentUser }) => {
+  const { t: translations } = useLanguage();
+  const t = (key) => {
+    const keys = key.split('.');
+    let value = translations;
+    for (const k of keys) {
+      value = value?.[k];
+    }
+    return value || key;
+  };
   const [showForm, setShowForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
@@ -40,9 +51,24 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
   const [revenueAmount, setRevenueAmount] = useState('');
   const [revenueDate, setRevenueDate] = useState('');
   const [revenueDescription, setRevenueDescription] = useState('');
+  const [showMonthlyForm, setShowMonthlyForm] = useState(false);
+  const [monthlyProjectId, setMonthlyProjectId] = useState('');
+  const [monthlyMonth, setMonthlyMonth] = useState('');
+  const [monthlyYear, setMonthlyYear] = useState(new Date().getFullYear());
+  const [monthlyRevenueAmount, setMonthlyRevenueAmount] = useState('');
+  const [monthlyExpensesAmount, setMonthlyExpensesAmount] = useState('');
+  const [monthlyNotes, setMonthlyNotes] = useState('');
+  const [monthlyFinancials, setMonthlyFinancials] = useState([]);
+  const [editingMonthly, setEditingMonthly] = useState(null);
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [calculatorData, setCalculatorData] = useState(null);
+  const [showCompletionReport, setShowCompletionReport] = useState(false);
+  const [completionReportData, setCompletionReportData] = useState(null);
+  const [expenses, setExpenses] = useState([]);
   
   const { addToast } = useToast();
   const { startLoading, stopLoading, isLoading } = useLoading();
+  const navigate = useNavigate();
 
   useEffect(() => {
     startLoading('projectsData');
@@ -157,14 +183,28 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
   };
 
   const handleDelete = async (projectId) => {
-    if (window.confirm('Are you sure you want to delete this project?')) {
-      try {
+    try {
+      startLoading('checkDependencies');
+      const check = await projectsService.checkProjectDependencies(projectId);
+      stopLoading('checkDependencies');
+
+      if (!check.canDelete) {
+        const message = `Cannot delete this project. Please delete the following first:\n\n${check.dependencies.join('\n')}\n\nGo to respective tabs to delete these records.`;
+        addToast(message, 'error');
+        return;
+      }
+
+      if (window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+        startLoading('deleteProject');
         await projectsService.deleteProject(projectId);
         setProjects(projects.filter(p => p.id !== projectId));
         addToast('Project deleted successfully!', 'success');
-      } catch (error) {
-        addToast(getUserFriendlyError(error), 'error');
       }
+    } catch (error) {
+      addToast(getUserFriendlyError(error), 'error');
+    } finally {
+      stopLoading('deleteProject');
+      stopLoading('checkDependencies');
     }
   };
 
@@ -218,6 +258,34 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
     }
   };
 
+  const handleOpenCalculator = async (project) => {
+    setSelectedProject(project);
+    startLoading('calculator');
+    try {
+      const metrics = await projectsService.calculateProjectMetrics(project.id);
+      setCalculatorData(metrics);
+      setShowCalculator(true);
+    } catch (error) {
+      addToast(getUserFriendlyError(error), 'error');
+    } finally {
+      stopLoading('calculator');
+    }
+  };
+
+  const handleGenerateReport = async (project) => {
+    setSelectedProject(project);
+    startLoading('report');
+    try {
+      const report = await projectsService.generateCompletionReport(project.id);
+      setCompletionReportData(report);
+      setShowCompletionReport(true);
+    } catch (error) {
+      addToast(getUserFriendlyError(error), 'error');
+    } finally {
+      stopLoading('report');
+    }
+  };
+
   const calculateMemberShare = (member) => {
     if (!projectFinancials || !member.member) return { amount: 0, percentage: 0 };
     
@@ -246,6 +314,10 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
       loadInvestments();
     } else if (activeTab === 'revenues') {
       loadRevenues();
+    } else if (activeTab === 'monthly') {
+      loadMonthlyFinancials();
+    } else if (activeTab === 'expenses') {
+      loadExpenses();
     }
   }, [activeTab]);
 
@@ -262,6 +334,18 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
       addToast(getUserFriendlyError(error), 'error');
     } finally {
       stopLoading('loadInvestments');
+    }
+  };
+
+  const handleDeleteInvestment = async (id) => {
+    if (window.confirm('Are you sure you want to delete this investment? Investment percentages will be recalculated.')) {
+      try {
+        await projectsService.deleteProjectInvestment(id);
+        await loadInvestments();
+        addToast('Investment deleted successfully!', 'success');
+      } catch (error) {
+        addToast(getUserFriendlyError(error), 'error');
+      }
     }
   };
 
@@ -347,6 +431,120 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
     }
   };
 
+  const handleDeleteRevenue = async (id) => {
+    if (window.confirm('Are you sure you want to delete this revenue record?')) {
+      try {
+        await projectsService.deleteProjectRevenue(id);
+        await loadRevenues();
+        addToast('Revenue deleted successfully!', 'success');
+      } catch (error) {
+        addToast(getUserFriendlyError(error), 'error');
+      }
+    }
+  };
+
+  const loadExpenses = async () => {
+    startLoading('loadExpenses');
+    try {
+      const allExpenses = [];
+      for (const project of projects) {
+        const projectExpenses = await projectsService.getProjectExpenses(project.id);
+        allExpenses.push(...projectExpenses.map(exp => ({ ...exp, project_name: project.name })));
+      }
+      setExpenses(allExpenses);
+    } catch (error) {
+      addToast(getUserFriendlyError(error), 'error');
+    } finally {
+      stopLoading('loadExpenses');
+    }
+  };
+
+  const loadMonthlyFinancials = async () => {
+    startLoading('loadMonthly');
+    try {
+      const allMonthly = [];
+      for (const project of projects) {
+        const projectMonthly = await projectsService.getMonthlyFinancials(project.id);
+        allMonthly.push(...projectMonthly.map(m => ({ ...m, project_name: project.name })));
+      }
+      setMonthlyFinancials(allMonthly);
+    } catch (error) {
+      addToast(getUserFriendlyError(error), 'error');
+    } finally {
+      stopLoading('loadMonthly');
+    }
+  };
+
+  const handleAddMonthly = async (e) => {
+    e.preventDefault();
+    if (!monthlyProjectId || !monthlyMonth || !monthlyYear) {
+      addToast('Please fill in all required fields', 'error');
+      return;
+    }
+    
+    startLoading('addMonthly');
+    try {
+      if (editingMonthly) {
+        await projectsService.updateMonthlyFinancial(editingMonthly.id, {
+          revenue: parseFloat(monthlyRevenueAmount) || 0,
+          expenses: parseFloat(monthlyExpensesAmount) || 0,
+          notes: monthlyNotes
+        });
+        addToast('Monthly financial updated successfully!', 'success');
+      } else {
+        await projectsService.addMonthlyFinancial({
+          projectId: parseInt(monthlyProjectId),
+          month: parseInt(monthlyMonth),
+          year: parseInt(monthlyYear),
+          revenue: parseFloat(monthlyRevenueAmount) || 0,
+          expenses: parseFloat(monthlyExpensesAmount) || 0,
+          notes: monthlyNotes
+        });
+        addToast('Monthly financial added successfully!', 'success');
+      }
+      await loadMonthlyFinancials();
+      resetMonthlyForm();
+      setShowMonthlyForm(false);
+    } catch (error) {
+      addToast(getUserFriendlyError(error), 'error');
+    } finally {
+      stopLoading('addMonthly');
+    }
+  };
+
+  const handleEditMonthly = (monthly) => {
+    setEditingMonthly(monthly);
+    setMonthlyProjectId(monthly.project_id);
+    setMonthlyMonth(monthly.month);
+    setMonthlyYear(monthly.year);
+    setMonthlyRevenueAmount(monthly.revenue);
+    setMonthlyExpensesAmount(monthly.expenses);
+    setMonthlyNotes(monthly.notes || '');
+    setShowMonthlyForm(true);
+  };
+
+  const handleDeleteMonthly = async (id) => {
+    if (window.confirm('Are you sure you want to delete this monthly record?')) {
+      try {
+        await projectsService.deleteMonthlyFinancial(id);
+        await loadMonthlyFinancials();
+        addToast('Monthly financial deleted successfully!', 'success');
+      } catch (error) {
+        addToast(getUserFriendlyError(error), 'error');
+      }
+    }
+  };
+
+  const resetMonthlyForm = () => {
+    setMonthlyProjectId('');
+    setMonthlyMonth('');
+    setMonthlyYear(new Date().getFullYear());
+    setMonthlyRevenueAmount('');
+    setMonthlyExpensesAmount('');
+    setMonthlyNotes('');
+    setEditingMonthly(null);
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'projects':
@@ -355,6 +553,10 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
         return renderInvestmentsTab();
       case 'revenues':
         return renderRevenuesTab();
+      case 'expenses':
+        return renderExpensesTab();
+      case 'monthly':
+        return renderMonthlyTab();
       case 'analysis':
         return renderAnalysisTab();
       default:
@@ -375,14 +577,14 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
         <thead>
           <tr>
             <th>ID</th>
-            <th>Name</th>
-            <th>Category</th>
-            <th>Status</th>
-            <th>Progress</th>
-            <th>Start Date</th>
-            <th>End Date</th>
-            <th>Assigned To</th>
-            <th>Actions</th>
+            <th>{t('members.name')}</th>
+            <th>{t('projects.category')}</th>
+            <th>{t('projects.status')}</th>
+            <th>{t('projects.progress')}</th>
+            <th>{t('projects.startDate')}</th>
+            <th>{t('projects.endDate')}</th>
+            <th>{t('projects.assignedTo')}</th>
+            <th>{t('common.actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -413,24 +615,42 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
               <td>{project.end_date || 'N/A'}</td>
               <td>{project.assigned_member?.name || 'Unassigned'}</td>
               <td>
-                {hasWritePermission(currentUser, 'projects') && (
-                  <div className="action-buttons">
+                <div className="action-buttons">
+                  <button 
+                    className="btn btn--icon btn--info" 
+                    title="Calculator"
+                    onClick={() => handleOpenCalculator(project)}
+                  >
+                    <span>Calc</span>
+                  </button>
+                  {project.status === 'Completed' && (
                     <button 
-                      className="btn btn--icon btn--secondary" 
-                      title="Edit Project"
-                      onClick={() => handleEdit(project)}
+                      className="btn btn--icon btn--primary" 
+                      title="Completion Report"
+                      onClick={() => handleGenerateReport(project)}
                     >
-                      <span>Edit</span>
+                      <span>Report</span>
                     </button>
-                    <button 
-                      className="btn btn--icon btn--danger" 
-                      title="Delete Project"
-                      onClick={() => handleDelete(project.id)}
-                    >
-                      <span>Delete</span>
-                    </button>
-                  </div>
-                )}
+                  )}
+                  {hasWritePermission(currentUser, 'projects') && (
+                    <>
+                      <button 
+                        className="btn btn--icon btn--secondary" 
+                        title="Edit Project"
+                        onClick={() => handleEdit(project)}
+                      >
+                        <span>Edit</span>
+                      </button>
+                      <button 
+                        className="btn btn--icon btn--danger" 
+                        title="Delete Project"
+                        onClick={() => handleDelete(project.id)}
+                      >
+                        <span>Delete</span>
+                      </button>
+                    </>
+                  )}
+                </div>
               </td>
             </tr>
           ))}
@@ -464,15 +684,29 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                   <th>Member</th>
                   <th>Amount</th>
                   <th>Date</th>
+                  <th>Percentage</th>
+                  {hasWritePermission(currentUser, 'projects') && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {filteredInvestments.map((inv, idx) => (
-                  <tr key={idx}>
+                {filteredInvestments.map((inv) => (
+                  <tr key={inv.id}>
                     <td>{inv.project_name}</td>
                     <td>{inv.member?.name || 'N/A'}</td>
-                    <td>৳{inv.amount}</td>
+                    <td>৳{parseFloat(inv.amount).toFixed(2)}</td>
                     <td>{inv.investment_date}</td>
+                    <td>{inv.investment_percentage ? `${parseFloat(inv.investment_percentage).toFixed(2)}%` : 'N/A'}</td>
+                    {hasWritePermission(currentUser, 'projects') && (
+                      <td>
+                        <button 
+                          className="btn btn--icon btn--danger" 
+                          onClick={() => handleDeleteInvestment(inv.id)}
+                          title="Delete Investment"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -507,19 +741,155 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                 <th>Amount</th>
                 <th>Date</th>
                 <th>Description</th>
+                {hasWritePermission(currentUser, 'projects') && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
-              {filteredRevenues.map((rev, idx) => (
-                <tr key={idx}>
+              {filteredRevenues.map((rev) => (
+                <tr key={rev.id}>
                   <td>{rev.project_name}</td>
-                  <td>৳{rev.amount}</td>
+                  <td>৳{parseFloat(rev.amount).toFixed(2)}</td>
                   <td>{rev.revenue_date}</td>
                   <td>{rev.description || 'N/A'}</td>
+                  {hasWritePermission(currentUser, 'projects') && (
+                    <td>
+                      <button 
+                        className="btn btn--icon btn--danger" 
+                        onClick={() => handleDeleteRevenue(rev.id)}
+                        title="Delete Revenue"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderExpensesTab = () => {
+    const filteredExpenses = expenses.filter(exp => 
+      exp.project_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (exp.reason && exp.reason.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    
+    return (
+      <div className="expenses-tab">
+        {hasWritePermission(currentUser, 'expenses') && (
+          <div className="tab-actions">
+            <button 
+              className="btn btn--primary" 
+              onClick={() => navigate('/expenses')}
+            >
+              Add Expense
+            </button>
+          </div>
+        )}
+        <div className="expenses-list">
+          {isLoading('loadExpenses') ? (
+            <LoadingSpinner />
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Project</th>
+                  <th>Reason</th>
+                  <th>Amount</th>
+                  <th>Date</th>
+                  <th>Expense By</th>
+                  <th>Category</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredExpenses.length > 0 ? (
+                  filteredExpenses.map((exp) => (
+                    <tr key={exp.id}>
+                      <td>{exp.project_name}</td>
+                      <td>{exp.reason}</td>
+                      <td className="text-danger">৳{parseFloat(exp.amount).toFixed(2)}</td>
+                      <td>{exp.expense_date}</td>
+                      <td>{exp.expense_by}</td>
+                      <td>{exp.category || 'N/A'}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>
+                      No project expenses found. Expenses are managed from the Expenses page.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f0f9ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+          <p style={{ margin: 0, color: '#1e40af' }}>
+            <strong>Note:</strong> To add or manage project expenses, please go to the Expenses page and link them to a project.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMonthlyTab = () => {
+    const filteredMonthly = monthlyFinancials.filter(m => 
+      m.project_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    return (
+      <div className="monthly-tab">
+        {hasWritePermission(currentUser, 'projects') && (
+          <div className="tab-actions">
+            <button className="btn btn--primary" onClick={() => { resetMonthlyForm(); setShowMonthlyForm(true); }}>Add Monthly Update</button>
+          </div>
+        )}
+        <div className="monthly-list">
+          {isLoading('loadMonthly') ? (
+            <LoadingSpinner />
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Project</th>
+                  <th>Period</th>
+                  <th>Revenue</th>
+                  <th>Expenses</th>
+                  <th>Net Profit/Loss</th>
+                  <th>Notes</th>
+                  {hasWritePermission(currentUser, 'projects') && <th>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredMonthly.map((m) => (
+                  <tr key={m.id}>
+                    <td>{m.project_name}</td>
+                    <td>{monthNames[m.month - 1]} {m.year}</td>
+                    <td className="text-success">৳{parseFloat(m.revenue).toFixed(2)}</td>
+                    <td className="text-danger">৳{parseFloat(m.expenses).toFixed(2)}</td>
+                    <td className={parseFloat(m.net_profit_loss) >= 0 ? 'text-success' : 'text-danger'}>
+                      ৳{parseFloat(m.net_profit_loss).toFixed(2)}
+                    </td>
+                    <td>{m.notes || 'N/A'}</td>
+                    {hasWritePermission(currentUser, 'projects') && (
+                      <td>
+                        <div className="action-buttons">
+                          <button className="btn btn--icon btn--secondary" onClick={() => handleEditMonthly(m)}>Edit</button>
+                          <button className="btn btn--icon btn--danger" onClick={() => handleDeleteMonthly(m.id)}>Delete</button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       </div>
@@ -617,7 +987,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
   return (
     <div className="projects">
       <div className="projects-header">
-        <h2>Projects Management</h2>
+        <h2>{t('projects.title')}</h2>
         {hasWritePermission(currentUser, 'projects') && activeTab === 'projects' && (
           <button 
             className="btn btn--primary" 
@@ -626,7 +996,7 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
               setShowForm(true);
             }}
           >
-            Add Project
+            {t('projects.addProject')}
           </button>
         )}
       </div>
@@ -636,25 +1006,37 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
           className={`tab ${activeTab === 'projects' ? 'tab--active' : ''}`}
           onClick={() => setActiveTab('projects')}
         >
-          Projects
+          {t('nav.projects')}
         </button>
         <button 
           className={`tab ${activeTab === 'investments' ? 'tab--active' : ''}`}
           onClick={() => setActiveTab('investments')}
         >
-          Project Investments
+          {t('projects.projectInvestments')}
         </button>
         <button 
           className={`tab ${activeTab === 'revenues' ? 'tab--active' : ''}`}
           onClick={() => setActiveTab('revenues')}
         >
-          Project Revenues
+          {t('projects.projectRevenues')}
+        </button>
+        <button 
+          className={`tab ${activeTab === 'expenses' ? 'tab--active' : ''}`}
+          onClick={() => setActiveTab('expenses')}
+        >
+          {t('nav.expenses')}
+        </button>
+        <button 
+          className={`tab ${activeTab === 'monthly' ? 'tab--active' : ''}`}
+          onClick={() => setActiveTab('monthly')}
+        >
+          Monthly Updates
         </button>
         <button 
           className={`tab ${activeTab === 'analysis' ? 'tab--active' : ''}`}
           onClick={() => setActiveTab('analysis')}
         >
-          Analysis
+          {t('projects.analysis')}
         </button>
       </div>
 
@@ -1271,6 +1653,331 @@ const Projects = ({ projects, setProjects, members, currentUser }) => {
                 )}
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showMonthlyForm && (
+        <div className="overlay">
+          <div className="overlay-content">
+            <div className="overlay-header">
+              <h2>{editingMonthly ? 'Edit' : 'Add'} Monthly Financial Update</h2>
+              <button className="close-btn" onClick={() => { setShowMonthlyForm(false); resetMonthlyForm(); }}>×</button>
+            </div>
+            <form onSubmit={handleAddMonthly}>
+              <div className="form-section">
+                <div className="form-group">
+                  <label>Select Project *</label>
+                  <select value={monthlyProjectId} onChange={(e) => setMonthlyProjectId(e.target.value)} required disabled={editingMonthly}>
+                    <option value="">Select a project</option>
+                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Month *</label>
+                    <select value={monthlyMonth} onChange={(e) => setMonthlyMonth(e.target.value)} required disabled={editingMonthly}>
+                      <option value="">Select month</option>
+                      {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                        <option key={i + 1} value={i + 1}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Year *</label>
+                    <input type="number" value={monthlyYear} onChange={(e) => setMonthlyYear(e.target.value)} min="2000" max="2100" required disabled={editingMonthly} />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Revenue (৳)</label>
+                    <input type="number" value={monthlyRevenueAmount} onChange={(e) => setMonthlyRevenueAmount(e.target.value)} min="0" step="0.01" placeholder="0.00" />
+                  </div>
+                  <div className="form-group">
+                    <label>Expenses (৳)</label>
+                    <input type="number" value={monthlyExpensesAmount} onChange={(e) => setMonthlyExpensesAmount(e.target.value)} min="0" step="0.01" placeholder="0.00" />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Notes</label>
+                  <textarea value={monthlyNotes} onChange={(e) => setMonthlyNotes(e.target.value)} rows="3" placeholder="Optional notes" />
+                </div>
+                {monthlyRevenueAmount && monthlyExpensesAmount && (
+                  <div className="form-group">
+                    <label>Net Profit/Loss:</label>
+                    <div className={`financial-preview ${(parseFloat(monthlyRevenueAmount) - parseFloat(monthlyExpensesAmount)) >= 0 ? 'text-success' : 'text-danger'}`}>
+                      ৳{(parseFloat(monthlyRevenueAmount) - parseFloat(monthlyExpensesAmount)).toFixed(2)}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="form-actions">
+                {isLoading('addMonthly') ? <LoadingSpinner size="small" /> : (
+                  <>
+                    <button type="submit" className="btn btn--primary">{editingMonthly ? 'Update' : 'Add'} Monthly Update</button>
+                    <button type="button" className="btn btn--secondary" onClick={() => { setShowMonthlyForm(false); resetMonthlyForm(); }}>Cancel</button>
+                  </>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showCalculator && calculatorData && (
+        <div className="overlay">
+          <div className="overlay-content overlay-content--large">
+            <div className="overlay-header">
+              <h2>Project Calculator - {selectedProject?.name}</h2>
+              <button className="close-btn" onClick={() => setShowCalculator(false)}>×</button>
+            </div>
+            {isLoading('calculator') ? (
+              <LoadingSpinner />
+            ) : (
+              <div className="calculator-content">
+                <div className="calculator-section">
+                  <h3>Financial Overview</h3>
+                  <div className="financial-cards">
+                    <div className="financial-card">
+                      <div className="financial-label">Total Investment</div>
+                      <div className="financial-value">৳{calculatorData.totalInvestment.toFixed(2)}</div>
+                    </div>
+                    <div className="financial-card">
+                      <div className="financial-label">Total Revenue</div>
+                      <div className="financial-value financial-value--success">৳{calculatorData.totalRevenue.toFixed(2)}</div>
+                    </div>
+                    <div className="financial-card">
+                      <div className="financial-label">Total Expenses</div>
+                      <div className="financial-value financial-value--danger">৳{calculatorData.totalExpenses.toFixed(2)}</div>
+                    </div>
+                    <div className="financial-card">
+                      <div className="financial-label">Net Profit/Loss</div>
+                      <div className={`financial-value ${calculatorData.netProfitLoss >= 0 ? 'financial-value--success' : 'financial-value--danger'}`}>
+                        ৳{calculatorData.netProfitLoss.toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="financial-card">
+                      <div className="financial-label">ROI</div>
+                      <div className={`financial-value ${calculatorData.roi >= 0 ? 'financial-value--success' : 'financial-value--danger'}`}>
+                        {calculatorData.roi}%
+                      </div>
+                    </div>
+                    <div className="financial-card">
+                      <div className="financial-label">Break-Even (months)</div>
+                      <div className="financial-value">{calculatorData.breakEvenPoint}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="calculator-section">
+                  <h3>Member Investment Distribution</h3>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Member</th>
+                        <th>Investment</th>
+                        <th>Percentage</th>
+                        <th>Profit/Loss Share</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {calculatorData.memberDistribution.map((member, idx) => (
+                        <tr key={idx}>
+                          <td>{member.member?.name || 'N/A'}</td>
+                          <td>৳{parseFloat(member.totalInvestment).toFixed(2)}</td>
+                          <td>{member.investmentPercentage}%</td>
+                          <td className={parseFloat(member.profitLossShare) >= 0 ? 'text-success' : 'text-danger'}>
+                            ৳{parseFloat(member.profitLossShare).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {calculatorData.monthlyTrend.length > 0 && (
+                  <div className="calculator-section">
+                    <h3>Monthly Trend</h3>
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Period</th>
+                          <th>Revenue</th>
+                          <th>Expenses</th>
+                          <th>Net P/L</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {calculatorData.monthlyTrend.map((m, idx) => (
+                          <tr key={idx}>
+                            <td>{['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m.month - 1]} {m.year}</td>
+                            <td className="text-success">৳{m.revenue.toFixed(2)}</td>
+                            <td className="text-danger">৳{m.expenses.toFixed(2)}</td>
+                            <td className={m.netProfitLoss >= 0 ? 'text-success' : 'text-danger'}>৳{m.netProfitLoss.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showCompletionReport && completionReportData && (
+        <div className="overlay">
+          <div className="overlay-content overlay-content--large">
+            <div className="overlay-header">
+              <h2>Project Completion Report - {selectedProject?.name}</h2>
+              <button className="close-btn" onClick={() => setShowCompletionReport(false)}>×</button>
+            </div>
+            {isLoading('report') ? (
+              <LoadingSpinner />
+            ) : (
+              <div className="report-content">
+                <div className="report-header">
+                  <h3>Project Summary</h3>
+                  <p><strong>Status:</strong> {completionReportData.project.status}</p>
+                  <p><strong>Duration:</strong> {completionReportData.project.start_date} to {completionReportData.project.end_date || 'Ongoing'}</p>
+                  <p><strong>Report Generated:</strong> {new Date(completionReportData.reportGeneratedAt).toLocaleString()}</p>
+                </div>
+
+                <div className="report-section">
+                  <h3>Financial Summary</h3>
+                  <div className="financial-cards">
+                    <div className="financial-card">
+                      <div className="financial-label">Total Investment</div>
+                      <div className="financial-value">৳{completionReportData.totalInvestment.toFixed(2)}</div>
+                    </div>
+                    <div className="financial-card">
+                      <div className="financial-label">Total Revenue</div>
+                      <div className="financial-value financial-value--success">৳{completionReportData.totalRevenue.toFixed(2)}</div>
+                    </div>
+                    <div className="financial-card">
+                      <div className="financial-label">Total Expenses</div>
+                      <div className="financial-value financial-value--danger">৳{completionReportData.totalExpenses.toFixed(2)}</div>
+                    </div>
+                    <div className="financial-card">
+                      <div className="financial-label">Final Profit/Loss</div>
+                      <div className={`financial-value ${completionReportData.netProfitLoss >= 0 ? 'financial-value--success' : 'financial-value--danger'}`}>
+                        ৳{completionReportData.netProfitLoss.toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="financial-card">
+                      <div className="financial-label">ROI</div>
+                      <div className={`financial-value ${completionReportData.roi >= 0 ? 'financial-value--success' : 'financial-value--danger'}`}>
+                        {completionReportData.roi}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="report-section">
+                  <h3>Investment Details</h3>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Member</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Share %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {completionReportData.detailedInvestments.map((inv, idx) => (
+                        <tr key={idx}>
+                          <td>{inv.member}</td>
+                          <td>৳{inv.amount.toFixed(2)}</td>
+                          <td>{inv.date}</td>
+                          <td>{inv.percentage.toFixed(2)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="report-section">
+                  <h3>Revenue Details</h3>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {completionReportData.detailedRevenues.map((rev, idx) => (
+                        <tr key={idx}>
+                          <td className="text-success">৳{rev.amount.toFixed(2)}</td>
+                          <td>{rev.date}</td>
+                          <td>{rev.description || 'N/A'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="report-section">
+                  <h3>Expense Details</h3>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Reason</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Expense By</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {completionReportData.detailedExpenses.map((exp, idx) => (
+                        <tr key={idx}>
+                          <td>{exp.reason}</td>
+                          <td className="text-danger">৳{exp.amount.toFixed(2)}</td>
+                          <td>{exp.date}</td>
+                          <td>{exp.expenseBy}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="report-section">
+                  <h3>Final Distribution</h3>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Member</th>
+                        <th>Investment</th>
+                        <th>Share %</th>
+                        <th>Profit/Loss Share</th>
+                        <th>Final Return</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {completionReportData.memberDistribution.map((member, idx) => {
+                        const finalReturn = parseFloat(member.totalInvestment) + parseFloat(member.profitLossShare);
+                        return (
+                          <tr key={idx}>
+                            <td>{member.member?.name || 'N/A'}</td>
+                            <td>৳{parseFloat(member.totalInvestment).toFixed(2)}</td>
+                            <td>{member.investmentPercentage}%</td>
+                            <td className={parseFloat(member.profitLossShare) >= 0 ? 'text-success' : 'text-danger'}>
+                              ৳{parseFloat(member.profitLossShare).toFixed(2)}
+                            </td>
+                            <td className={finalReturn >= parseFloat(member.totalInvestment) ? 'text-success' : 'text-danger'}>
+                              ৳{finalReturn.toFixed(2)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

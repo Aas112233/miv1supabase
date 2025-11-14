@@ -24,6 +24,7 @@ const Login = ({ onLogin }) => {
   const [messageText, setMessageText] = useState('');
   const [clubName, setClubName] = useState('Investment Club');
   const [fetchingData, setFetchingData] = useState(false);
+  const [isDeviceBlocked, setIsDeviceBlocked] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -52,9 +53,10 @@ const Login = ({ onLogin }) => {
     setError('');
     setShowMessage(true);
     setMessageType('loading');
-    setMessageText('Authenticating...');
+    setMessageText('Checking device status...');
     
     try {
+      setMessageText('Authenticating...');
       const response = await authService.login(email, password);
       authService.storeSession(response.session, rememberMe);
       
@@ -90,10 +92,23 @@ const Login = ({ onLogin }) => {
       // Navigate to dashboard after data is loaded
       navigate('/dashboard');
     } catch (err) {
-      setMessageType('error');
-      setMessageText(err.message || 'Invalid email or password');
-      setError(err.message || 'Invalid email or password');
-      setTimeout(() => setShowMessage(false), 3000);
+      const errorMsg = err.message || 'Invalid email or password';
+      
+      // Check if access or device is blocked
+      if (errorMsg.startsWith('ACCESS_BLOCKED:') || errorMsg.startsWith('DEVICE_BLOCKED:')) {
+        const reason = errorMsg.replace('ACCESS_BLOCKED:', '').replace('DEVICE_BLOCKED:', '');
+        setMessageType('blocked');
+        setMessageText(reason);
+        setError(reason);
+        setIsDeviceBlocked(true);
+        // Don't auto-hide for blocked access
+      } else {
+        setMessageType('error');
+        setMessageText(errorMsg);
+        setError(errorMsg);
+        setIsDeviceBlocked(false);
+        setTimeout(() => setShowMessage(false), 3000);
+      }
     } finally {
       setLoading(false);
     }
@@ -185,11 +200,19 @@ const Login = ({ onLogin }) => {
           
           {error && <div className="error-message">{error}</div>}
           
-          <button type="submit" className="login-button" disabled={loading}>
+          <button type="submit" className="login-button" disabled={loading || isDeviceBlocked}>
             {loading ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span className="spinner" style={{ marginRight: '8px' }}></span>
                 {t.auth.loggingIn}
+              </div>
+            ) : isDeviceBlocked ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '8px' }}>
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M15 9L9 15M9 9L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                Device Blocked
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -209,12 +232,33 @@ const Login = ({ onLogin }) => {
 
       {showMessage && (
         <div className="message-overlay">
-          <div className={`message-box message-${messageType}`}>
+          <div className={`message-box message-${messageType}`} style={messageType === 'blocked' ? { maxWidth: '450px', padding: '30px' } : {}}>
             {messageType === 'loading' && <span className="spinner"></span>}
             {messageType === 'success' && <span className="icon-success">✓</span>}
             {messageType === 'error' && <span className="icon-error">✕</span>}
             {messageType === 'info' && <span className="icon-info">ℹ</span>}
-            <p>{messageText}</p>
+            {messageType === 'blocked' && (
+              <div style={{ textAlign: 'center' }}>
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 20px', color: '#ef4444' }}>
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M15 9L9 15M9 9L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                <h3 style={{ color: '#ef4444', marginBottom: '10px', fontSize: '20px' }}>Access Denied</h3>
+              </div>
+            )}
+            <p style={messageType === 'blocked' ? { fontSize: '16px', lineHeight: '1.6', marginBottom: '10px' } : {}}>{messageText}</p>
+            {messageType === 'blocked' && (
+              <>
+                <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px' }}>If you believe this is an error, please contact your administrator.</p>
+                <button 
+                  className="btn btn--primary"
+                  onClick={() => setShowMessage(false)}
+                  style={{ width: '100%' }}
+                >
+                  OK
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

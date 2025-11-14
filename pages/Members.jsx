@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../contexts/ToastContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import useLoading from '../hooks/useLoading';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { hasWritePermission } from '../components/PermissionChecker';
@@ -10,12 +11,16 @@ import { getUserFriendlyError } from '../src/utils/errorHandler';
 import './Members.css';
 
 const Members = ({ members, setMembers, payments, currentUser }) => {
+  const { t: translations } = useLanguage();
+  const t = (key) => key.split('.').reduce((obj, k) => obj?.[k], translations) || key;
+  
   const [showForm, setShowForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [memberFinancials, setMemberFinancials] = useState(null);
   const [editingMember, setEditingMember] = useState(null);
+  const [originalMemberData, setOriginalMemberData] = useState(null);
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
   const [shareAmount, setShareAmount] = useState('');
@@ -244,13 +249,26 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
     }
   };
 
-  const handleEdit = (member) => {
+  const handleEdit = async (member) => {
     setEditingMember(member);
+    setOriginalMemberData({
+      name: member.name,
+      contact: member.contact,
+      shareAmount: member.shareAmount.toString()
+    });
     setName(member.name);
     setContact(member.contact);
     setShareAmount(member.shareAmount.toString());
+    
+    // Check if member has assigned user
+    if (member.userId) {
+      const userProfile = await userService.getUserProfile(member.userId);
+      if (userProfile) {
+        setUserEmail(userProfile.email);
+      }
+    }
+    
     setCreateAccessUser(false);
-    setUserEmail('');
     setUserPassword('');
     setConfirmPassword('');
     setShowEditForm(true);
@@ -366,8 +384,8 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
     <div className="members">
       <div className="members-header">
         <div className="members-header-content">
-          <h2>Members</h2>
-          <p className="members-header-subtitle">Manage investment club members and their share information</p>
+          <h2>{t('members.title')}</h2>
+          <p className="members-header-subtitle">{t('members.subtitle')}</p>
         </div>
         {hasWritePermission(currentUser, 'members') && (
           <button 
@@ -383,7 +401,7 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
               setShowForm(true);
             }}
           >
-            Add Member
+            {t('members.addMember')}
           </button>
         )}
       </div>
@@ -400,7 +418,7 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
           </div>
           <div className="stat-card-content">
             <h3>{totalMembers}</h3>
-            <p>Total Members</p>
+            <p>{t('members.title')}</p>
           </div>
         </div>
         <div className="stat-card">
@@ -413,14 +431,14 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
           </div>
           <div className="stat-card-content">
             <h3>{totalShares}</h3>
-            <p>Total Shares</p>
+            <p>{t('members.totalShares')}</p>
           </div>
         </div>
       </div>
 
       <div className="members-list-container">
         <div className="members-list-header">
-          <h3>Member List</h3>
+          <h3>{t('members.memberList')}</h3>
           <div className="members-list-actions">
             <div className="search-box">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="search-icon">
@@ -428,7 +446,7 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
               </svg>
               <input 
                 type="text" 
-                placeholder="Search members..." 
+                placeholder={t('common.search')} 
                 className="search-input"
               />
             </div>
@@ -440,12 +458,12 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Name</th>
-                <th>Contact</th>
-                <th>Share Amount</th>
-                <th>Total Balance</th>
-                <th>Join Date</th>
-                <th>Actions</th>
+                <th>{t('members.name')}</th>
+                <th>{t('members.contact')}</th>
+                <th>{t('members.shareAmount')}</th>
+                <th>{t('members.totalBalance')}</th>
+                <th>{t('members.joinDate')}</th>
+                <th>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -507,13 +525,13 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                   <path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-              <h3>No Members Found</h3>
-              <p>Get started by adding your first member</p>
+              <h3>{t('members.noMembers')}</h3>
+              <p>{t('members.getMemberStarted')}</p>
               <button 
                 className="btn btn--primary" 
                 onClick={() => setShowForm(true)}
               >
-                Add Member
+                {t('members.addMember')}
               </button>
             </div>
           )}
@@ -525,7 +543,7 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
         <div className="overlay">
           <div className="overlay-content">
             <div className="overlay-header">
-              <h2>Add New Member</h2>
+              <h2>{t('members.addMember')}</h2>
               <button 
                 className="overlay-close" 
                 onClick={() => setShowForm(false)}
@@ -538,10 +556,10 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
             </div>
             <form onSubmit={handleSubmit} className="member-form">
               <div className="form-section">
-                <h3 className="form-section-title">Member Information</h3>
+                <h3 className="form-section-title">{t('members.memberInfo')}</h3>
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="name">Full Name *</label>
+                    <label htmlFor="name">{t('members.fullName')} *</label>
                     <input
                       type="text"
                       id="name"
@@ -552,7 +570,7 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="contact">Contact Information *</label>
+                    <label htmlFor="contact">{t('members.contactInfo')} *</label>
                     <input
                       type="text"
                       id="contact"
@@ -564,7 +582,7 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                   </div>
                 </div>
                 <div className="form-group">
-                  <label htmlFor="shareAmount">Share Amount *</label>
+                  <label htmlFor="shareAmount">{t('members.shareAmount')} *</label>
                   <input
                     type="number"
                     id="shareAmount"
@@ -575,7 +593,7 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                     autoComplete="off"
                   />
                   <div className="form-hint">
-                    Each share is worth 1000 BDT
+                    {t('members.shareHint')}
                   </div>
                 </div>
               </div>
@@ -590,16 +608,16 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                       checked={createAccessUser}
                       onChange={(e) => setCreateAccessUser(e.target.checked)}
                     />
-                    <span>Create login access for this member</span>
+                    <span>{t('members.createLoginAccess')}</span>
                   </label>
-                  <div className="form-hint">Allow this member to access the system</div>
+                  <div className="form-hint">{t('members.allowAccess')}</div>
                 </div>
                 
                 {createAccessUser && (
                   <div className="user-credentials-section">
-                    <h3 className="form-section-title">Login Credentials</h3>
+                    <h3 className="form-section-title">{t('members.loginCredentials')}</h3>
                     <div className="form-group">
-                      <label htmlFor="userEmail">Email Address *</label>
+                      <label htmlFor="userEmail">{t('members.emailAddress')} *</label>
                       <input
                         type="email"
                         id="userEmail"
@@ -611,18 +629,18 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                     </div>
                     <div className="form-row">
                       <div className="form-group">
-                        <label htmlFor="userPassword">Password *</label>
+                        <label htmlFor="userPassword">{t('auth.password')} *</label>
                         <input
                           type="password"
                           id="userPassword"
                           value={userPassword}
                           onChange={(e) => setUserPassword(e.target.value)}
-                          placeholder="Minimum 6 characters"
+                          placeholder={t('members.passwordHint')}
                           autoComplete="new-password"
                         />
                       </div>
                       <div className="form-group">
-                        <label htmlFor="confirmPassword">Confirm Password *</label>
+                        <label htmlFor="confirmPassword">{t('members.confirmPassword')} *</label>
                         <input
                           type="password"
                           id="confirmPassword"
@@ -642,15 +660,20 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                   <LoadingSpinner size="small" />
                 ) : (
                   <>
-                    <button type="submit" className="btn btn--primary">
-                      Add Member
+                    <button 
+                      type="submit" 
+                      className="btn btn--primary"
+                      disabled={!name.trim() || !contact.trim() || !shareAmount || parseInt(shareAmount) < 1}
+                      title={!name.trim() || !contact.trim() || !shareAmount || parseInt(shareAmount) < 1 ? 'Please fill in all required fields' : ''}
+                    >
+                      {t('members.addMember')}
                     </button>
                     <button 
                       type="button" 
                       className="btn btn--secondary"
                       onClick={() => setShowForm(false)}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </>
                 )}
@@ -665,7 +688,7 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
         <div className="overlay">
           <div className="overlay-content">
             <div className="overlay-header">
-              <h2>Edit Member</h2>
+              <h2>{t('members.editMember')}</h2>
               <button 
                 className="overlay-close" 
                 onClick={() => {
@@ -723,20 +746,34 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                 </div>
               </div>
               
-              {/* Option to create access user */}
-              <div className="form-group checkbox-container">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={createAccessUser}
-                    onChange={(e) => setCreateAccessUser(e.target.checked)}
-                  />
-                  Create access user for this member
-                </label>
-              </div>
+              {/* Show assigned user or option to create access user */}
+              {editingMember?.userId ? (
+                <div className="form-group">
+                  <label>Assigned User Account</label>
+                  <div style={{ padding: '10px', backgroundColor: '#f0f9ff', border: '1px solid #0ea5e9', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 4.17157 16.1716C3.42143 16.9217 3 17.9391 3 19V21" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span style={{ color: '#0369a1', fontWeight: '500' }}>{userEmail}</span>
+                  </div>
+                  <div className="form-hint">This member has an assigned user account. Manage it from User Management screen.</div>
+                </div>
+              ) : (
+                <div className="form-group checkbox-container">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={createAccessUser}
+                      onChange={(e) => setCreateAccessUser(e.target.checked)}
+                    />
+                    Create access user for this member
+                  </label>
+                </div>
+              )}
               
-              {/* User credentials fields - shown when createAccessUser is checked */}
-              {createAccessUser && (
+              {/* User credentials fields - only show if no user is assigned */}
+              {!editingMember?.userId && createAccessUser && (
                 <>
                   <div className="form-group">
                     <label htmlFor="editUserEmail">User Email *</label>
@@ -785,8 +822,25 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                   <LoadingSpinner size="small" />
                 ) : (
                   <>
-                    <button type="submit" className="btn btn--primary">
-                      Update Member
+                    <button 
+                      type="submit" 
+                      className="btn btn--primary"
+                      disabled={
+                        name === originalMemberData?.name &&
+                        contact === originalMemberData?.contact &&
+                        shareAmount === originalMemberData?.shareAmount &&
+                        !createAccessUser
+                      }
+                      title={
+                        name === originalMemberData?.name &&
+                        contact === originalMemberData?.contact &&
+                        shareAmount === originalMemberData?.shareAmount &&
+                        !createAccessUser
+                          ? 'Change data to update member'
+                          : ''
+                      }
+                    >
+                      {t('common.update')}
                     </button>
                     <button 
                       type="button" 
@@ -794,9 +848,10 @@ const Members = ({ members, setMembers, payments, currentUser }) => {
                       onClick={() => {
                         setShowEditForm(false);
                         setEditingMember(null);
+                        setOriginalMemberData(null);
                       }}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </>
                 )}

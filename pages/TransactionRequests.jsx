@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useToast } from '../contexts/ToastContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import useLoading from '../hooks/useLoading';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { hasWritePermission } from '../components/PermissionChecker';
@@ -7,6 +8,9 @@ import transactionRequestsService from '../api/transactionRequestsService';
 import './TransactionRequests.css';
 
 const TransactionRequests = ({ requests, setRequests, payments, setPayments, members, currentUser }) => {
+  const { t: translations } = useLanguage();
+  const t = (key) => key.split('.').reduce((obj, k) => obj?.[k], translations) || key;
+  
   const [showForm, setShowForm] = useState(false);
   const [memberId, setMemberId] = useState('');
   const [amount, setAmount] = useState('');
@@ -252,13 +256,13 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
   return (
     <div className="transaction-requests">
       <div className="requests-header">
-        <h2>Transaction Requests</h2>
+        <h2>{t('transactionRequests.title')}</h2>
         {hasWritePermission(currentUser, 'requests') && (
           <button 
             className="btn btn--primary" 
             onClick={() => setShowForm(true)}
           >
-            Request Transaction
+            {t('transactionRequests.requestTransaction')}
           </button>
         )}
       </div>
@@ -267,7 +271,7 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
         <div className="search-box">
           <input
             type="text"
-            placeholder="Search requests..."
+            placeholder={t('transactionRequests.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -283,15 +287,15 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
           <table className="data-table">
             <thead>
               <tr>
-                <th>Member</th>
-                <th>Request Type</th>
-                <th>Amount</th>
-                <th>Month</th>
-                <th>Method</th>
-                <th>Cashier</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>{t('transactionRequests.member')}</th>
+                <th>{t('transactionRequests.requestType')}</th>
+                <th>{t('transactionRequests.amount')}</th>
+                <th>{t('transactionRequests.month')}</th>
+                <th>{t('transactionRequests.method')}</th>
+                <th>{t('transactionRequests.cashier')}</th>
+                <th>{t('transactionRequests.date')}</th>
+                <th>{t('transactionRequests.status')}</th>
+                <th>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -307,7 +311,7 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
                     <td>{request.request_date || request.requestDate || 'N/A'}</td>
                     <td>
                       <span className={`status-badge status-badge--${request.status || 'pending'}`}>
-                        {request.status || 'pending'}
+                        {t(`transactionRequests.${request.status || 'pending'}`)}
                       </span>
                     </td>
                     <td>
@@ -322,13 +326,13 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
                                 className="btn btn--success"
                                 onClick={() => handleApprove(request.id)}
                               >
-                                Approve
+                                {t('transactionRequests.approve')}
                               </button>
                               <button 
                                 className="btn btn--danger"
                                 onClick={() => handleReject(request.id)}
                               >
-                                Reject
+                                {t('transactionRequests.reject')}
                               </button>
                             </>
                           )
@@ -340,7 +344,7 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
               ) : (
                 <tr>
                   <td colSpan="9" className="no-data">
-                    No transaction requests found
+                    {t('transactionRequests.noRequests')}
                   </td>
                 </tr>
               )}
@@ -354,7 +358,7 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
         <div className="overlay">
           <div className="overlay-content">
             <div className="overlay-header">
-              <h2>Request New Transaction</h2>
+              <h2>{t('transactionRequests.requestNewTransaction')}</h2>
               <button 
                 className="close-btn" 
                 onClick={() => setShowForm(false)}
@@ -364,13 +368,13 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
             </div>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="memberId">Member *</label>
+                <label htmlFor="memberId">{t('transactionRequests.member')} *</label>
                 <select
                   id="memberId"
                   value={memberId}
                   onChange={handleMemberChange}
                 >
-                  <option value="">Select a member</option>
+                  <option value="">{t('transactionRequests.selectMember')}</option>
                   {members.map((member) => (
                     <option key={member.id} value={member.id}>
                       {member.name} (Shares: {member.shareAmount})
@@ -386,13 +390,13 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
                     checked={isSharePayment}
                     onChange={handleSharePaymentToggle}
                   />
-                  <span>Calculate amount as share × 1000 BDT</span>
+                  <span>{t('transactionRequests.calculateAmount')}</span>
                 </label>
-                <div className="form-hint">When enabled, amount will be automatically calculated based on member's shares</div>
+                <div className="form-hint">{t('transactionRequests.autoCalculate')}</div>
               </div>
               
               <div className="form-group">
-                <label htmlFor="amount">Amount (BDT) *</label>
+                <label htmlFor="amount">{t('transactionRequests.amount')} (BDT) *</label>
                 <input
                   type="number"
                   id="amount"
@@ -410,7 +414,7 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
               
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="paymentMonth">Payment Month *</label>
+                  <label htmlFor="paymentMonth">{t('transactionRequests.paymentMonth')} *</label>
                   <div className="autocomplete" ref={autocompleteRef}>
                     <input
                       type="text"
@@ -446,14 +450,14 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
                 </div>
                 
                 <div className="form-group">
-                  <label htmlFor="paymentMethod">Payment Method *</label>
+                  <label htmlFor="paymentMethod">{t('transactionRequests.paymentMethod')} *</label>
                   <select
                     id="paymentMethod"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     required
                   >
-                    <option value="">Select Method</option>
+                    <option value="">{t('transactionRequests.selectMethod')}</option>
                     <option value="Cash">Cash</option>
                     <option value="Bank Transfer">Bank Transfer</option>
                     <option value="Check">Check</option>
@@ -463,7 +467,7 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
               </div>
               
               <div className="form-group">
-                <label htmlFor="cashierName">Cashier Name *</label>
+                <label htmlFor="cashierName">{t('transactionRequests.cashierName')} *</label>
                 <input
                   type="text"
                   id="cashierName"
@@ -483,13 +487,13 @@ const TransactionRequests = ({ requests, setRequests, payments, setPayments, mem
                       type="button" 
                       onClick={() => setShowForm(false)}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button 
                       type="submit" 
                       className="btn--primary"
                     >
-                      Submit Request
+                      {t('transactionRequests.submitRequest')}
                     </button>
                   </>
                 )}

@@ -24,7 +24,11 @@ const MasterData = ({ currentUser }) => {
     { id: 'expense_category', name: 'Expense Categories' },
     { id: 'project_category', name: 'Project Categories' },
     { id: 'project_status', name: 'Project Status' },
-    { id: 'deduct_from', name: 'Deduct From Options' }
+    { id: 'deduct_from', name: 'Deduct From Options' },
+    { id: 'fund_type', name: 'Fund Types' },
+    { id: 'fund_transaction_type', name: 'Fund Transaction Types' },
+    { id: 'fund_transaction_status', name: 'Fund Transaction Status' },
+    { id: 'fund_source_type', name: 'Fund Source Types' }
   ];
 
   useEffect(() => {

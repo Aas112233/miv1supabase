@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useToast } from '../contexts/ToastContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import useLoading from '../hooks/useLoading';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { hasWritePermission } from '../components/PermissionChecker';
@@ -9,6 +10,9 @@ import { getUserFriendlyError } from '../src/utils/errorHandler';
 import './Payments.css';
 
 const Payments = ({ payments, setPayments, members, currentUser }) => {
+  const { t: translations } = useLanguage();
+  const t = (key) => key.split('.').reduce((obj, k) => obj?.[k], translations) || key;
+  
   const [showForm, setShowForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingPayment, setEditingPayment] = useState(null);
@@ -323,7 +327,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
   return (
     <div className="payments">
       <div className="payments-header">
-        <h2>Payments</h2>
+        <h2>{t('payments.title')}</h2>
         {hasWritePermission(currentUser, 'payments') && (
           <button 
             className="btn btn--primary" 
@@ -338,7 +342,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
               setShowForm(true);
             }}
           >
-            Add Payment
+            {t('payments.addPayment')}
           </button>
         )}
       </div>
@@ -346,11 +350,11 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
       <div className="payments-stats">
         <div className="stat-card">
           <div className="stat-value">{totalTransactions}</div>
-          <div className="stat-label">Total Transactions</div>
+          <div className="stat-label">{t('payments.totalTransactions')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-value">৳{totalPayments.toFixed(2)}</div>
-          <div className="stat-label">Total Amount</div>
+          <div className="stat-label">{t('payments.totalAmount')}</div>
         </div>
       </div>
 
@@ -360,14 +364,14 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
           <thead>
             <tr>
               <th>ID</th>
-              <th>Member</th>
-              <th>Amount</th>
-              <th>Month</th>
-              <th>Date</th>
-              <th>Method</th>
-              <th>Cashier</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>{t('payments.member')}</th>
+              <th>{t('payments.amount')}</th>
+              <th>{t('payments.month')}</th>
+              <th>{t('payments.date')}</th>
+              <th>{t('payments.method')}</th>
+              <th>{t('payments.cashier')}</th>
+              <th>{t('payments.status')}</th>
+              <th>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -382,7 +386,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                 <td>{payment.cashier_name || payment.cashierName}</td>
                 <td>
                   <span className={`status-badge status-badge--${payment.status}`}>
-                    {payment.status}
+                    {t(`payments.${payment.status}`)}
                   </span>
                 </td>
                 <td>
@@ -397,7 +401,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                           <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                           <path d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
-                        <span>Edit</span>
+                        <span>{t('common.edit')}</span>
                       </button>
                       <button 
                         className="btn btn--icon btn--danger" 
@@ -410,7 +414,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                           <path d="M10 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                           <path d="M14 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
-                        <span>Delete</span>
+                        <span>{t('common.delete')}</span>
                       </button>
                     </div>
                   )}
@@ -425,7 +429,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
         <div className="overlay">
           <div className="overlay-content">
             <div className="overlay-header">
-              <h2>Add New Payment</h2>
+              <h2>{t('payments.addPayment')}</h2>
               <button 
                 className="close-btn" 
                 onClick={() => setShowForm(false)}
@@ -435,15 +439,15 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
             </div>
             <form onSubmit={handleSubmit} className="payment-form">
               <div className="form-section">
-                <h3 className="form-section-title">Payment Information</h3>
+                <h3 className="form-section-title">{t('payments.paymentInfo')}</h3>
                 <div className="form-group">
-                  <label htmlFor="memberId">Member *</label>
+                  <label htmlFor="memberId">{t('payments.member')} *</label>
                   <select
                     id="memberId"
                     value={memberId}
                     onChange={handleMemberChange}
                   >
-                    <option value="">Select a member</option>
+                    <option value="">{t('payments.selectMember')}</option>
                     {members.map((member) => (
                       <option key={member.id} value={member.id}>
                         {member.name} (Shares: {member.shareAmount})
@@ -459,13 +463,13 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                       checked={isSharePayment}
                       onChange={handleSharePaymentToggle}
                     />
-                    <span>Calculate amount as share × ৳1000</span>
+                    <span>{t('payments.calculateAmount')}</span>
                   </label>
-                  <div className="form-hint">When enabled, amount will be automatically calculated based on member's shares</div>
+                  <div className="form-hint">{t('payments.autoCalculate')}</div>
                 </div>
                 
                 <div className="form-group">
-                  <label htmlFor="amount">Amount (৳) *</label>
+                  <label htmlFor="amount">{t('payments.amount')} (৳) *</label>
                   <input
                     type="number"
                     id="amount"
@@ -485,10 +489,10 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
               <div className="form-divider"></div>
               
               <div className="form-section">
-                <h3 className="form-section-title">Payment Details</h3>
+                <h3 className="form-section-title">{t('payments.paymentDetails')}</h3>
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="paymentMonth">Payment Month *</label>
+                    <label htmlFor="paymentMonth">{t('payments.paymentMonth')} *</label>
                     <div className="autocomplete" ref={autocompleteRef}>
                       <input
                         type="text"
@@ -523,7 +527,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                   </div>
                   
                   <div className="form-group">
-                    <label htmlFor="paymentDate">Payment Date *</label>
+                    <label htmlFor="paymentDate">{t('payments.paymentDate')} *</label>
                     <input
                       type="date"
                       id="paymentDate"
@@ -535,13 +539,13 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="paymentMethod">Payment Method *</label>
+                    <label htmlFor="paymentMethod">{t('payments.paymentMethod')} *</label>
                     <select
                       id="paymentMethod"
                       value={paymentMethod}
                       onChange={(e) => setPaymentMethod(e.target.value)}
                     >
-                      <option value="">Select payment method</option>
+                      <option value="">{t('payments.selectMethod')}</option>
                       {paymentMethods.map((method) => (
                         <option key={method.id} value={method.value}>
                           {method.value}
@@ -551,13 +555,13 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                   </div>
                   
                   <div className="form-group">
-                    <label htmlFor="cashierName">Cashier Name *</label>
+                    <label htmlFor="cashierName">{t('payments.cashierName')} *</label>
                     <select
                       id="cashierName"
                       value={cashierName}
                       onChange={(e) => setCashierName(e.target.value)}
                     >
-                      <option value="">Select cashier</option>
+                      <option value="">{t('payments.selectCashier')}</option>
                       {cashierNames.map((cashier) => (
                         <option key={cashier.id} value={cashier.value}>
                           {cashier.value}
@@ -574,14 +578,14 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                 ) : (
                   <>
                     <button type="submit" className="btn btn--primary">
-                      Add Payment
+                      {t('payments.addPayment')}
                     </button>
                     <button 
                       type="button" 
                       className="btn btn--secondary"
                       onClick={() => setShowForm(false)}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </>
                 )}
@@ -595,7 +599,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
         <div className="overlay">
           <div className="overlay-content">
             <div className="overlay-header">
-              <h2>Edit Payment</h2>
+              <h2>{t('payments.editPayment')}</h2>
               <button 
                 className="close-btn" 
                 onClick={() => {
@@ -707,7 +711,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                 ) : (
                   <>
                     <button type="submit" className="btn btn--primary">
-                      Update Payment
+                      {t('common.update')}
                     </button>
                     <button 
                       type="button" 
@@ -717,7 +721,7 @@ const Payments = ({ payments, setPayments, members, currentUser }) => {
                         setEditingPayment(null);
                       }}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </>
                 )}

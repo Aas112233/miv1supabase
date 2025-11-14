@@ -1,15 +1,64 @@
 // src/api/authService.js
 import { supabase } from '../src/config/supabaseClient';
+import sessionService from './sessionService';
 
 class AuthService {
   async login(email, password) {
     try {
+      // Get device info BEFORE authentication
+      const clientInfo = sessionService.getClientInfo();
+      const ipAddress = await sessionService.getClientIP();
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       
       if (error) throw error;
+      
+      // Check if user access is blocked
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('access_blocked, block_reason')
+        .eq('id', data.user.id)
+        .single();
+      
+      if (profile?.access_blocked) {
+        await supabase.auth.signOut();
+        throw new Error(`ACCESS_BLOCKED:${profile.block_reason || 'Your access has been terminated. Please contact administrator.'}`);
+      }
+      
+      // Check if device is blocked BEFORE creating session
+      console.log('Checking device block for:', {
+        userId: data.user.id,
+        ipAddress,
+        userAgent: clientInfo.userAgent
+      });
+      
+      const deviceCheck = await sessionService.checkDeviceBlocked(
+        data.user.id,
+        ipAddress,
+        clientInfo.userAgent
+      );
+      
+      console.log('Device check result:', deviceCheck);
+      
+      if (deviceCheck.blocked) {
+        await supabase.auth.signOut();
+        throw new Error(`DEVICE_BLOCKED:${deviceCheck.reason || 'This device has been blocked. Please contact administrator.'}`);
+      }
+      
+      // Create session record only if device is not blocked
+      try {
+        const sessionId = await sessionService.createSession(
+          data.user.id,
+          ipAddress,
+          clientInfo.userAgent
+        );
+        localStorage.setItem('current_session_id', sessionId);
+      } catch (sessionError) {
+        console.error('Failed to create session record:', sessionError);
+      }
       
       return {
         user: data.user,
@@ -67,6 +116,8 @@ class AuthService {
 
   async logout() {
     try {
+      // Clear session ID
+      localStorage.removeItem('current_session_id');
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       return { message: 'Logged out successfully' };

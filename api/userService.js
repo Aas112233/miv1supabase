@@ -180,6 +180,39 @@ class UserService {
       throw error;
     }
   }
+
+  async assignUserToMember(userId, memberId) {
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .update({ user_id: userId })
+        .eq('id', memberId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error assigning user to member:', error);
+      throw error;
+    }
+  }
+
+  async getMemberByUserId(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching member by user ID:', error);
+      return null;
+    }
+  }
 }
 
 const userService = new UserService();

@@ -27,6 +27,7 @@ import NotAuthorized from './pages/NotAuthorized';
 import NotFound from './pages/NotFound';
 import Goals from './pages/Goals';
 import MasterData from './pages/MasterData';
+import Funds from './pages/Funds';
 import authService from './api/authService';
 import membersService from './api/membersService';
 import paymentsService from './api/paymentsService';
@@ -36,6 +37,7 @@ import transactionRequestsService from './api/transactionRequestsService';
 import auditService from './api/auditService';
 import userService from './api/userService';
 import permissionsService from './api/permissionsService';
+import sessionService from './api/sessionService';
 import { supabase } from './src/config/supabaseClient';
 
 import './App.css';
@@ -52,11 +54,28 @@ const App = () => {
   const [goals, setGoals] = useState([]);
   const [theme, setTheme] = useLocalStorage('theme', 'light');
   const [loading, setLoading] = useState(true);
+  const [showTerminatedModal, setShowTerminatedModal] = useState(false);
 
   // Apply theme to body class
   useEffect(() => {
     document.body.className = theme === 'dark' ? 'theme-dark' : 'theme-light';
   }, [theme]);
+
+  // Monitor session status
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const intervalId = sessionService.startSessionMonitoring(() => {
+      setShowTerminatedModal(true);
+    });
+
+    return () => sessionService.stopSessionMonitoring(intervalId);
+  }, [isLoggedIn]);
+
+  const handleSessionTerminated = async () => {
+    setShowTerminatedModal(false);
+    await handleLogout();
+  };
 
   // Check for existing session on app load
   useEffect(() => {
@@ -177,6 +196,27 @@ const App = () => {
   return (
     <ErrorBoundary>
       <OfflineIndicator />
+      {showTerminatedModal && (
+        <div className="overlay" style={{ zIndex: 10000 }}>
+          <div className="overlay-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div style={{ padding: '30px' }}>
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 20px', color: '#ef4444' }}>
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                <path d="M15 9L9 15M9 9L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              <h2 style={{ marginBottom: '15px', color: '#1f2937' }}>Session Terminated</h2>
+              <p style={{ marginBottom: '25px', color: '#6b7280' }}>Your session has been terminated by an administrator. You will be logged out.</p>
+              <button 
+                className="btn btn--primary"
+                onClick={handleSessionTerminated}
+                style={{ width: '100%' }}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <ToastProvider>
         <Router>
         <KeyboardShortcutsWrapper>
@@ -324,6 +364,14 @@ const App = () => {
                           setGoals={setGoals} 
                           currentUser={currentUser}
                         />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/funds" 
+                    element={
+                      <ProtectedRoute currentUser={currentUser} screenName="funds">
+                        <Funds currentUser={currentUser} />
                       </ProtectedRoute>
                     } 
                   />

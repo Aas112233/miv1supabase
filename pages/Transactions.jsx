@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import useLoading from '../hooks/useLoading';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { formatDateDisplay } from '../utils/dateUtils';
 import './Transactions.css';
 
 const Transactions = ({ payments }) => {
+  const { t: translations } = useLanguage();
+  const t = (key) => key.split('.').reduce((obj, k) => obj?.[k], translations) || key;
+  
   const [transactions, setTransactions] = useState([]);
   const [filteredTransactions, setFilteredTransactions] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -83,14 +87,14 @@ const Transactions = ({ payments }) => {
   return (
     <div className="transactions">
       <div className="transactions-header">
-        <h2>Transactions</h2>
+        <h2>{t('transactions.title')}</h2>
       </div>
 
       <div className="transactions-filters">
         <div className="search-box">
           <input
             type="text"
-            placeholder="Search transactions..."
+            placeholder={t('transactions.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -115,11 +119,11 @@ const Transactions = ({ payments }) => {
           <div className="transactions-stats">
             <div className="stat-card">
               <h3>{sortedTransactions.length}</h3>
-              <p>Total Transactions</p>
+              <p>{t('transactions.totalTransactions')}</p>
             </div>
             <div className="stat-card">
               <h3>{totalAmount.toFixed(2)}</h3>
-              <p>Total Amount (BDT)</p>
+              <p>{t('transactions.totalAmount')}</p>
             </div>
           </div>
 
@@ -131,24 +135,24 @@ const Transactions = ({ payments }) => {
                     ID {sortField === 'id' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th onClick={() => handleSort('memberName')} className="sortable">
-                    Member {sortField === 'memberName' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    {t('transactions.member')} {sortField === 'memberName' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th onClick={() => handleSort('amount')} className="sortable">
-                    Amount {sortField === 'amount' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    {t('transactions.amount')} {sortField === 'amount' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th onClick={() => handleSort('paymentMonth')} className="sortable">
-                    Month {sortField === 'paymentMonth' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    {t('transactions.month')} {sortField === 'paymentMonth' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th onClick={() => handleSort('paymentDate')} className="sortable">
-                    Date {sortField === 'paymentDate' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    {t('transactions.date')} {sortField === 'paymentDate' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th onClick={() => handleSort('paymentMethod')} className="sortable">
-                    Method {sortField === 'paymentMethod' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    {t('transactions.method')} {sortField === 'paymentMethod' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th onClick={() => handleSort('cashierName')} className="sortable">
-                    Cashier {sortField === 'cashierName' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    {t('transactions.cashier')} {sortField === 'cashierName' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th>Status</th>
+                  <th>{t('transactions.status')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -164,7 +168,7 @@ const Transactions = ({ payments }) => {
                       <td>{transaction.cashier_name || transaction.cashierName || 'N/A'}</td>
                       <td>
                         <span className={`status-badge status-badge--${transaction.status || 'completed'}`}>
-                          {transaction.status || 'completed'}
+                          {t(`payments.${transaction.status || 'completed'}`)}
                         </span>
                       </td>
                     </tr>
@@ -172,7 +176,7 @@ const Transactions = ({ payments }) => {
                 ) : (
                   <tr>
                     <td colSpan="8" className="no-data">
-                      No transactions found
+                      {t('transactions.noTransactions')}
                     </td>
                   </tr>
                 )}

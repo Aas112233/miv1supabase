@@ -10,9 +10,13 @@ import useLoading from '../hooks/useLoading';
 import useCountUp from '../hooks/useCountUp';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { parseDbDate, getMonthKey, getMonthName, formatDateDisplay } from '../utils/dateUtils';
+import { useLanguage } from '../contexts/LanguageContext';
 import './Dashboard.css';
 
 const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
+  const { t: translations } = useLanguage();
+  const t = (key) => key.split('.').reduce((obj, k) => obj?.[k], translations) || key;
+  
   const [stats, setStats] = useState({
     totalMembers: 0,
     totalShares: 0,
@@ -214,7 +218,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
   return (
     <div className="dashboard">
       <div className="dashboard-header">
-        <h2>Dashboard</h2>
+        <h2>{t('dashboard.title')}</h2>
       </div>
 
       {isLoading('loadStats') ? (
@@ -240,7 +244,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
               </div>
               <div className="stat-info">
                 <h3>{animatedMembers}</h3>
-                <p>Members</p>
+                <p>{t('dashboard.members')}</p>
               </div>
             </div>
             
@@ -250,7 +254,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
               </div>
               <div className="stat-info">
                 <h3>{animatedShares}</h3>
-                <p>Total Shares</p>
+                <p>{t('dashboard.totalShares')}</p>
               </div>
             </div>
             
@@ -260,7 +264,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
               </div>
               <div className="stat-info">
                 <h3>{animatedPayments}</h3>
-                <p>Payments</p>
+                <p>{t('dashboard.payments')}</p>
               </div>
             </div>
             
@@ -270,7 +274,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
               </div>
               <div className="stat-info">
                 <h3>৳{animatedAmount}</h3>
-                <p>Total Amount</p>
+                <p>{t('dashboard.totalAmount')}</p>
               </div>
             </div>
             
@@ -283,7 +287,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
               </div>
               <div className="stat-info">
                 <h3>৳{animatedExpenses}</h3>
-                <p>Total Expenses</p>
+                <p>{t('dashboard.totalExpenses')}</p>
               </div>
             </div>
             
@@ -297,7 +301,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
               </div>
               <div className="stat-info">
                 <h3>{animatedProjects}</h3>
-                <p>Active Projects</p>
+                <p>{t('dashboard.activeProjects')}</p>
               </div>
             </div>
           </div>
@@ -306,7 +310,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
           <div className="dashboard-charts">
             {/* Total Savings Growth Chart */}
             <div className="chart-container">
-              <h3>Total Savings Growth Over Time</h3>
+              <h3>{t('dashboard.totalSavingsGrowth')}</h3>
               <div className="chart-wrapper">
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={savingsGrowthData}>
@@ -330,7 +334,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                     <Line 
                       type="monotone" 
                       dataKey="amount" 
-                      name="Total Savings (৳)" 
+                      name={t('dashboard.totalSavings')} 
                       stroke="#007bff" 
                       strokeWidth={2}
                       dot={{ r: 4 }}
@@ -344,7 +348,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
 
             {/* Monthly Savings Trends Chart */}
             <div className="chart-container">
-              <h3>Monthly Savings Trends</h3>
+              <h3>{t('dashboard.monthlySavingsTrends')}</h3>
               <div className="chart-wrapper">
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={monthlySavingsData}>
@@ -365,7 +369,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                     <Line 
                       type="monotone" 
                       dataKey="amount" 
-                      name="Monthly Savings (৳)" 
+                      name={t('dashboard.monthlySavings')} 
                       stroke="#28a745" 
                       strokeWidth={2}
                       dot={{ r: 4 }}
@@ -379,7 +383,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
 
             {/* Member Contribution Distribution Chart */}
             <div className="chart-container">
-              <h3>Top Member Contributions</h3>
+              <h3>{t('dashboard.topMemberContributions')}</h3>
               <div className="chart-wrapper">
                 <ResponsiveContainer width="100%" height={400}>
                   <RadarChart data={memberContributionData}>
@@ -389,7 +393,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />
                     <Radar 
-                      name="Contribution (৳)" 
+                      name={t('dashboard.contribution')} 
                       dataKey="amount" 
                       stroke="#ffc107" 
                       fill="#ffc107" 
@@ -402,7 +406,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
 
             {/* Project Revenue/Loss Chart */}
             <div className="chart-container">
-              <h3>Project Financial Overview</h3>
+              <h3>{t('dashboard.projectFinancialOverview')}</h3>
               <div className="chart-wrapper">
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={projectFinancialsData}>
@@ -422,19 +426,19 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                     <Legend />
                     <Bar 
                       dataKey="revenue" 
-                      name="Revenue (৳)" 
+                      name={t('dashboard.revenue')} 
                       fill="#28a745" 
                       animationDuration={300}
                     />
                     <Bar 
                       dataKey="investment" 
-                      name="Investment (৳)" 
+                      name={t('dashboard.investment')} 
                       fill="#ffc107" 
                       animationDuration={300}
                     />
                     <Bar 
                       dataKey="profit" 
-                      name="Profit/Loss (৳)" 
+                      name={t('dashboard.profitLoss')} 
                       fill={projectFinancialsData.map(item => item.profit >= 0 ? "#007bff" : "#dc3545")} 
                       animationDuration={300}
                     />
@@ -445,7 +449,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
 
             {/* Top Performing Payment Months Chart */}
             <div className="chart-container">
-              <h3>Top Performing Payment Months</h3>
+              <h3>{t('dashboard.topPerformingMonths')}</h3>
               <div className="chart-wrapper">
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={topPerformingMonthsData} layout="vertical">
@@ -465,7 +469,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                     <Legend />
                     <Bar 
                       dataKey="amount" 
-                      name="Total Amount (৳)" 
+                      name={t('dashboard.totalAmount')} 
                       fill="#17a2b8" 
                       animationDuration={300}
                     />
@@ -476,7 +480,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
           </div>
 
           <div className="dashboard-recent">
-            <h3>Recent Payments</h3>
+            <h3>{t('dashboard.recentPayments')}</h3>
             {payments.length > 0 ? (
               <div className="recent-payments">
                 {payments
@@ -493,7 +497,7 @@ const Dashboard = ({ members, payments, expenses = [], projects = [] }) => {
                 ))}
               </div>
             ) : (
-              <p className="no-payments">No payments recorded yet.</p>
+              <p className="no-payments">{t('dashboard.noPayments')}</p>
             )}
           </div>
         </>

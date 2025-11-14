@@ -1,24 +1,33 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import userService from '../api/userService';
 import authService from '../api/authService';
 import permissionsService from '../api/permissionsService';
+import membersService from '../api/membersService';
+import sessionService from '../api/sessionService';
 import { useToast } from '../contexts/ToastContext';
 import { getUserFriendlyError } from '../src/utils/errorHandler';
 import './UserManagement.css';
 
 const UserManagement = ({ currentUser }) => {
+  const { t: translations } = useLanguage();
+  const t = (key) => key.split('.').reduce((obj, k) => obj?.[k], translations) || key;
+  
   const [showAccessModal, setShowAccessModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [showDeviceModal, setShowDeviceModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [userSessions, setUserSessions] = useState([]);
   const [userPermissions, setUserPermissions] = useState({});
   const [userRole, setUserRole] = useState('');
   const [authorizedUsers, setAuthorizedUsers] = useState([]);
+  const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
   const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'member' });
-  const [editFormData, setEditFormData] = useState({ name: '', email: '', role: 'member' });
+  const [editFormData, setEditFormData] = useState({ name: '', email: '', role: 'member', memberId: null });
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const { addToast } = useToast();
@@ -27,26 +36,30 @@ const UserManagement = ({ currentUser }) => {
 
   const isAdmin = currentUser && currentUser.role === 'admin';
 
-  // Fetch authorized users from user_profiles table
+  // Fetch authorized users and members
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setInitialLoading(true);
-        const users = await userService.getAllUsers();
+        const [users, membersList] = await Promise.all([
+          userService.getAllUsers(),
+          membersService.getAllMembers()
+        ]);
         setAuthorizedUsers(users || []);
+        setMembers(membersList || []);
         setTimeout(() => {
           setInitialLoading(false);
         }, 2000);
       } catch (error) {
-        console.error('Error fetching users:', error);
+        console.error('Error fetching data:', error);
         addToast(getUserFriendlyError(error), 'error');
         setInitialLoading(false);
       } finally {
         setLoading(false);
       }
     };
-    fetchUsers();
+    fetchData();
   }, []);
 
   // Initialize permissions for each user if not already done
@@ -144,13 +157,117 @@ const UserManagement = ({ currentUser }) => {
     setUserRole('');
   };
 
-  const handleEditUser = (user) => {
+  const handleDeviceManagement = async (user) => {
+    if (!hasManagePermission) return;
+    
+    setSelectedUser(user);
+    setLoading(true);
+    try {
+      const sessions = await sessionService.getAllSessions(user.id);
+      setUserSessions(sessions);
+      setShowDeviceModal(true);
+    } catch (error) {
+      addToast(getUserFriendlyError(error), 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTerminateSession = async (sessionId, blockDevice = false) => {
+    if (!hasManagePermission) return;
+    
+    const message = blockDevice 
+      ? 'Terminate and block this device? User will not be able to login from this device again.'
+      : 'Terminate this session? User can login again from this device.';
+    
+    if (window.confirm(message)) {
+      try {
+        setLoading(true);
+        await sessionService.terminateSession(sessionId, currentUser.id, blockDevice);
+        const sessions = await sessionService.getAllSessions(selectedUser.id);
+        setUserSessions(sessions);
+        addToast(blockDevice ? 'Device blocked successfully' : 'Session terminated successfully', 'success');
+      } catch (error) {
+        addToast(getUserFriendlyError(error), 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleUnblockDevice = async (session) => {
+    if (!hasManagePermission) return;
+    
+    if (window.confirm('Restore access for this device?')) {
+      try {
+        setLoading(true);
+        await sessionService.unblockDevice(session.user_id, session.ip_address, session.user_agent);
+        const sessions = await sessionService.getAllSessions(selectedUser.id);
+        setUserSessions(sessions);
+        addToast('Device access restored', 'success');
+      } catch (error) {
+        addToast(getUserFriendlyError(error), 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleBlockUser = async (user) => {
+    if (!hasManagePermission) return;
+    
+    const reason = prompt('Enter reason for blocking user access:', 'Access terminated by administrator');
+    if (!reason) return;
+    
+    try {
+      setLoading(true);
+      await sessionService.blockUserAccess(user.id, currentUser.id, reason);
+      const users = await userService.getAllUsers();
+      setAuthorizedUsers(users || []);
+      addToast('User access blocked successfully', 'success');
+    } catch (error) {
+      addToast(getUserFriendlyError(error), 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnblockUser = async (userId) => {
+    if (!hasManagePermission) return;
+    
+    if (window.confirm('Are you sure you want to restore access for this user?')) {
+      try {
+        setLoading(true);
+        await sessionService.unblockUserAccess(userId);
+        const sessions = await sessionService.getAllSessions(userId);
+        setUserSessions(sessions);
+        const users = await userService.getAllUsers();
+        setAuthorizedUsers(users || []);
+        addToast('User access restored successfully', 'success');
+      } catch (error) {
+        addToast(getUserFriendlyError(error), 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleEditUser = async (user) => {
     if (!hasManagePermission) {
       addToast('You do not have permission to edit users', 'error');
       return;
     }
     setSelectedUser(user);
-    setEditFormData({ name: user.name, email: user.email, role: user.role || 'member' });
+    
+    // Find if user is already assigned to a member
+    const assignedMember = await userService.getMemberByUserId(user.id);
+    
+    setEditFormData({ 
+      name: user.name, 
+      email: user.email, 
+      role: user.role || 'member',
+      memberId: assignedMember ? assignedMember.id : null
+    });
     setShowEditModal(true);
   };
 
@@ -160,15 +277,22 @@ const UserManagement = ({ currentUser }) => {
 
     try {
       setLoading(true);
+      
+      // Update user profile
       await userService.updateUserProfile(selectedUser.id, {
         name: editFormData.name,
         role: editFormData.role
       });
 
+      // Assign user to member if selected
+      if (editFormData.memberId) {
+        await userService.assignUserToMember(selectedUser.id, editFormData.memberId);
+      }
+
       const users = await userService.getAllUsers();
       setAuthorizedUsers(users || []);
       setShowEditModal(false);
-      setEditFormData({ name: '', email: '', role: 'member' });
+      setEditFormData({ name: '', email: '', role: 'member', memberId: null });
       addToast('User updated successfully!', 'success');
     } catch (error) {
       addToast(getUserFriendlyError(error), 'error');
@@ -300,16 +424,16 @@ const UserManagement = ({ currentUser }) => {
   return (
     <div className="user-management">
       <div className="user-management-header">
-        <h1>User Management</h1>
-        <p className="subtitle">Manage user roles and permissions</p>
+        <h1>{t('userManagement.title')}</h1>
+        <p className="subtitle">{t('userManagement.subtitle')}</p>
       </div>
       
       <div className="users-list">
         <div className="users-header">
-          <h2>Authorized Users ({authorizedUsers.length})</h2>
+          <h2>{t('userManagement.authorizedUsers')} ({authorizedUsers.length})</h2>
           {hasManagePermission && (
             <button className="btn btn--primary" onClick={() => setShowCreateModal(true)}>
-              + Create User
+              + {t('userManagement.createUser')}
             </button>
           )}
         </div>
@@ -326,11 +450,11 @@ const UserManagement = ({ currentUser }) => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Last Login</th>
-                  <th>Actions</th>
+                  <th>{t('userManagement.name')}</th>
+                  <th>{t('userManagement.email')}</th>
+                  <th>{t('userManagement.role')}</th>
+                  <th>{t('userManagement.lastLogin')}</th>
+                  <th>{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -348,7 +472,7 @@ const UserManagement = ({ currentUser }) => {
                         {(user.role || 'member').toUpperCase()}
                       </span>
                     </td>
-                    <td>{user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</td>
+                    <td>{user.last_login ? new Date(user.last_login).toLocaleString() : t('userManagement.never')}</td>
                     <td>
                       <div className="action-buttons">
                         <button 
@@ -356,7 +480,7 @@ const UserManagement = ({ currentUser }) => {
                           onClick={() => handleManageAccess(user)}
                           disabled={!isAdmin}
                         >
-                          Manage Access
+                          {t('userManagement.manageAccess')}
                         </button>
                         {hasManagePermission && (
                           <>
@@ -364,7 +488,13 @@ const UserManagement = ({ currentUser }) => {
                               className="btn btn--secondary btn--sm"
                               onClick={() => handleEditUser(user)}
                             >
-                              Edit
+                              {t('common.edit')}
+                            </button>
+                            <button 
+                              className="btn btn--info btn--sm"
+                              onClick={() => handleDeviceManagement(user)}
+                            >
+                              Devices
                             </button>
                             <button 
                               className="btn btn--secondary btn--sm"
@@ -373,14 +503,14 @@ const UserManagement = ({ currentUser }) => {
                                 setShowCredentialsModal(true);
                               }}
                             >
-                              Change Password
+                              {t('userManagement.changePassword')}
                             </button>
                             <button 
                               className="btn btn--danger btn--sm"
                               onClick={() => handleDeleteUser(user)}
                               disabled={user.id === currentUser.id}
                             >
-                              Delete
+                              {t('common.delete')}
                             </button>
                           </>
                         )}
@@ -406,7 +536,7 @@ const UserManagement = ({ currentUser }) => {
         <div className="overlay">
           <div className="overlay-content" style={{ maxWidth: '500px' }}>
             <div className="overlay-header">
-              <h2>Edit User</h2>
+              <h2>{t('userManagement.editUser')}</h2>
               <button className="close-btn" onClick={() => setShowEditModal(false)}>×</button>
             </div>
             <form onSubmit={handleUpdateUser} style={{ padding: '25px' }}>
@@ -440,6 +570,24 @@ const UserManagement = ({ currentUser }) => {
                   <option value="admin">Admin</option>
                 </select>
               </div>
+              <div className="form-group">
+                <label>Assign to Member</label>
+                <select
+                  className="role-select"
+                  value={editFormData.memberId || ''}
+                  onChange={(e) => setEditFormData({ ...editFormData, memberId: e.target.value ? parseInt(e.target.value) : null })}
+                >
+                  <option value="">-- No Member Assigned --</option>
+                  {members
+                    .filter(member => !member.userId || member.userId === selectedUser.id)
+                    .map(member => (
+                      <option key={member.id} value={member.id}>
+                        {member.name} {member.userId === selectedUser.id ? '(Currently Assigned)' : ''}
+                      </option>
+                    ))}
+                </select>
+                <small style={{ color: '#6c757d' }}>Link this user account to a member record</small>
+              </div>
               <div className="form-actions">
                 <button type="button" className="btn btn--secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn--primary" disabled={loading}>Update User</button>
@@ -454,7 +602,7 @@ const UserManagement = ({ currentUser }) => {
         <div className="overlay">
           <div className="overlay-content" style={{ maxWidth: '500px' }}>
             <div className="overlay-header">
-              <h2>Create New User</h2>
+              <h2>{t('userManagement.createUser')}</h2>
               <button className="close-btn" onClick={() => setShowCreateModal(false)}>×</button>
             </div>
             <form onSubmit={handleCreateUser} style={{ padding: '25px' }}>
@@ -521,6 +669,128 @@ const UserManagement = ({ currentUser }) => {
                 <button type="submit" className="btn btn--primary" disabled={loading}>Send Reset Link</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Device Management Modal */}
+      {showDeviceModal && selectedUser && hasManagePermission && (
+        <div className="overlay">
+          <div className="overlay-content" style={{ maxWidth: '900px' }}>
+            <div className="overlay-header">
+              <h2>Device Management - {selectedUser.name}</h2>
+              <button className="close-btn" onClick={() => setShowDeviceModal(false)}>×</button>
+            </div>
+            <div style={{ padding: '25px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <p style={{ margin: 0, color: '#6c757d' }}>All devices and sessions for {selectedUser.email}</p>
+                {selectedUser.access_blocked ? (
+                  <button 
+                    className="btn btn--success btn--sm"
+                    onClick={() => handleUnblockUser(selectedUser.id)}
+                    disabled={loading}
+                  >
+                    Restore Access
+                  </button>
+                ) : (
+                  <button 
+                    className="btn btn--danger btn--sm"
+                    onClick={() => handleBlockUser(selectedUser)}
+                    disabled={loading}
+                  >
+                    Block User Access
+                  </button>
+                )}
+              </div>
+              
+              {selectedUser.access_blocked && (
+                <div style={{ padding: '12px', backgroundColor: '#fee2e2', border: '1px solid #ef4444', borderRadius: '4px', marginBottom: '20px' }}>
+                  <p style={{ margin: 0, color: '#991b1b', fontWeight: '500' }}>⚠️ User access is currently blocked</p>
+                  {selectedUser.block_reason && <p style={{ margin: '5px 0 0 0', color: '#991b1b', fontSize: '14px' }}>Reason: {selectedUser.block_reason}</p>}
+                </div>
+              )}
+              
+              {userSessions.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#6c757d' }}>
+                  <p>No sessions found</p>
+                </div>
+              ) : (
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Status</th>
+                      <th>Device</th>
+                      <th>Browser</th>
+                      <th>OS</th>
+                      <th>IP Address</th>
+                      <th>Last Activity</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {userSessions.map((session) => (
+                      <tr key={session.id} style={!session.is_active ? { opacity: 0.6, backgroundColor: '#f9fafb' } : {}}>
+                        <td>
+                          <span style={{ 
+                            padding: '4px 8px', 
+                            borderRadius: '4px', 
+                            fontSize: '12px',
+                            backgroundColor: session.is_active ? '#d1fae5' : '#fee2e2',
+                            color: session.is_active ? '#065f46' : '#991b1b'
+                          }}>
+                            {session.is_active ? 'Active' : 'Terminated'}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
+                              <path d="M8 21H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                              <path d="M12 17V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                            </svg>
+                            <span>{session.device_name || session.device_type}</span>
+                          </div>
+                        </td>
+                        <td>{session.browser}</td>
+                        <td>{session.os}</td>
+                        <td>{session.ip_address}</td>
+                        <td>{new Date(session.last_activity).toLocaleString()}</td>
+                        <td>
+                          {session.device_blocked ? (
+                            <button 
+                              className="btn btn--success btn--sm"
+                              onClick={() => handleUnblockDevice(session)}
+                              disabled={loading}
+                            >
+                              Unblock Device
+                            </button>
+                          ) : session.is_active ? (
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                              <button 
+                                className="btn btn--secondary btn--sm"
+                                onClick={() => handleTerminateSession(session.id, false)}
+                                disabled={loading}
+                                title="Terminate session only"
+                              >
+                                Terminate
+                              </button>
+                              <button 
+                                className="btn btn--danger btn--sm"
+                                onClick={() => handleTerminateSession(session.id, true)}
+                                disabled={loading}
+                                title="Terminate and block device"
+                              >
+                                Block Device
+                              </button>
+                            </div>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -19,7 +19,8 @@ import {
   FaReceipt,
   FaProjectDiagram,
   FaDatabase,
-  FaChartPie
+  FaChartPie,
+  FaWallet
 } from 'react-icons/fa';
 import './Sidebar.css';
 
@@ -151,7 +152,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
               onClick={handleNavClick}
             >
               <FaProjectDiagram className="nav-icon" />
-              {!isCollapsed && 'Projects'}
+              {!isCollapsed && t.nav.projects}
             </Link>
           </li>
           <li>
@@ -226,12 +227,22 @@ const Sidebar = ({ currentUser, onLogout }) => {
           </li>
           <li>
             <Link 
+              to="/funds" 
+              className={isActive('/funds') ? 'active' : ''}
+              onClick={handleNavClick}
+            >
+              <FaWallet className="nav-icon" />
+              {!isCollapsed && t.nav.funds}
+            </Link>
+          </li>
+          <li>
+            <Link 
               to="/master-data" 
               className={isActive('/master-data') ? 'active' : ''}
               onClick={handleNavClick}
             >
               <FaDatabase className="nav-icon" />
-              {!isCollapsed && 'Master Data'}
+              {!isCollapsed && t.nav.masterData}
             </Link>
           </li>
           <li>
